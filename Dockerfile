@@ -1,5 +1,5 @@
 # Tahap 1: Build aplikasi Vite/TypeScript dengan Node.js
-FROM node:18-alpine AS builder
+FROM node:18-slim AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
@@ -7,7 +7,7 @@ COPY . .
 RUN npm run build
 
 # Tahap 2: Sajikan hasil build menggunakan Nginx ringan
-FROM nginx:alpine
+FROM nginx:stable-slim
 # Hapus konfigurasi default nginx
 RUN rm -rf /usr/share/nginx/html/*
 # Salin hasil build dari tahap 1 ke folder HTML Nginx
