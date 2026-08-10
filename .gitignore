@@ -27,7 +27,6 @@ web_modules/
 .parcel-cache
 
 # Production build output
-dist/
 build/
 
 # Serverless Webpack directories
