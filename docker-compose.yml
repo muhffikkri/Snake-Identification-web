@@ -2,10 +2,12 @@ version: '3.8'
 
 services:
   snakebite_web:
-    build: .
+    image: nginx:alpine
     container_name: snakebite_web
     restart: always
     # Mengekspos port 80 internal ke port 8085 di server 
     # (Pastikan port 8085 belum dipakai aplikasi lain)
     ports:
       - "127.0.0.1:8085:80"
+    volumes:
+      - ./dist:/usr/share/nginx/html:ro
