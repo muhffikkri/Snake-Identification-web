@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   snakebite_web:
-    image: nginx:alpine
+    image: nginx:1.18
     container_name: snakebite_web
     restart: always
     # Mengekspos port 80 internal ke port 8085 di server 
