@@ -51,3 +51,7 @@ antigravity-ide/
 # System Files
 .DS_Store
 Thumbs.db
+
+# ML Models & Notebooks
+snakesnake (6).ipynb
+spatio_visual_snake_models.pkl

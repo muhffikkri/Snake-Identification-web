@@ -1,0 +1,9 @@
+node_modules
+dist
+build
+.git
+snakesnake (6).ipynb
+spatio_visual_snake_models.pkl
+.env.local
+.env.*.local
+.env
