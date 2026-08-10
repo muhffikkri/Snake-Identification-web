@@ -5,9 +5,7 @@ services:
     image: nginx:1.18
     container_name: snakebite_web
     restart: always
-    # Mengekspos port 80 internal ke port 8085 di server 
-    # (Pastikan port 8085 belum dipakai aplikasi lain)
-    ports:
-      - "127.0.0.1:8085:80"
+    network_mode: "host"
     volumes:
       - ./dist:/usr/share/nginx/html:ro
+      - ./default.conf:/etc/nginx/conf.d/default.conf:ro
