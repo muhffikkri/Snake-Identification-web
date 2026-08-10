@@ -1,5 +1,5 @@
 # Sajikan hasil build menggunakan Nginx ringan
-FROM nginx:stable-slim
+FROM nginx:latest
 # Hapus konfigurasi default nginx
 RUN rm -rf /usr/share/nginx/html/*
 # Salin hasil build lokal ke folder HTML Nginx
