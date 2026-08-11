@@ -15,6 +15,9 @@ export default {
         amberBadge: '#F57C00',
         greenBadge: '#388E3C',
       },
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+      },
       animation: {
         'pulse-slow': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       }
