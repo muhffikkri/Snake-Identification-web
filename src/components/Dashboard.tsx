@@ -261,7 +261,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     });
 
     const matchingSpecies = species.find(s => s.scientific_name === mostCommon);
-    const mostCommonImg = matchingSpecies?.reference_images[0] || 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?auto=format&fit=crop&w=400&q=80';
+    const mostCommonImg = matchingSpecies?.reference_images[0] || 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?auto=format&fit=crop&w=400&q=80&fm=webp';
     const mostCommonVenom = matchingSpecies?.venom_type || 'NEUROTOXIC';
 
     // Calculate emergency ratio

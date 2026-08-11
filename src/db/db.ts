@@ -89,7 +89,15 @@ export const db = new SnakeBiteDatabase();
 // Seed species matrix data (Representative 179 species dataset)
 export async function seedSpeciesDatabase() {
   const count = await db.species.count();
-  if (count > 0) return;
+  const first = count > 0 ? await db.species.toCollection().first() : null;
+  const needsReSeed = !first || !first.reference_images[0] || !first.reference_images[0].includes('fm=webp');
+
+  if (count > 0 && !needsReSeed) return;
+
+  if (needsReSeed && count > 0) {
+    await db.species.clear();
+    console.log('Cleared old species database to apply new WebP asset links.');
+  }
 
   const initialSpecies: SnakeSpecies[] = [
     {
@@ -101,7 +109,10 @@ export async function seedSpeciesDatabase() {
       geo_bbox: { latMin: -9.0, latMax: -5.0, lngMin: 105.0, lngMax: 116.0 },
       kde_params: { bandwidth: 2.0, n_observations: 1540, mean_lat: -7.2, mean_lng: 110.0 },
       clinical_priority: 5,
-      reference_images: ['/cobra-1.jpg', '/cobra-2.jpg'],
+      reference_images: [
+        'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?auto=format&fit=crop&w=400&q=80&fm=webp',
+        'https://images.unsplash.com/photo-1531386151447-fd762e7a3ae8?auto=format&fit=crop&w=400&q=80&fm=webp'
+      ],
       morphological_traits: ['Tudung leher melebar', 'Warna hitam legam/kecoklatan', 'Menyemburkan bisa']
     },
     {
@@ -113,7 +124,9 @@ export async function seedSpeciesDatabase() {
       geo_bbox: { latMin: -9.0, latMax: 6.0, lngMin: 95.0, lngMax: 116.0 },
       kde_params: { bandwidth: 2.0, n_observations: 820, mean_lat: -4.5, mean_lng: 107.5 },
       clinical_priority: 5,
-      reference_images: ['/krait-1.jpg'],
+      reference_images: [
+        'https://images.unsplash.com/photo-1604186838320-c7f822919558?auto=format&fit=crop&w=400&q=80&fm=webp'
+      ],
       morphological_traits: ['Belang hitam-kuning melingkar', 'Penampang tubuh segitiga', 'Ekor tumpul']
     },
     {
@@ -125,7 +138,9 @@ export async function seedSpeciesDatabase() {
       geo_bbox: { latMin: -9.0, latMax: 6.0, lngMin: 95.0, lngMax: 116.0 },
       kde_params: { bandwidth: 2.0, n_observations: 2100, mean_lat: -6.8, mean_lng: 108.0 },
       clinical_priority: 4,
-      reference_images: ['/viper-1.jpg'],
+      reference_images: [
+        'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=400&q=80&fm=webp'
+      ],
       morphological_traits: ['Tubuh pendek gempal', 'Corak segitiga coklat gelap', 'Moncong meruncing ke atas']
     },
     {
@@ -137,7 +152,9 @@ export async function seedSpeciesDatabase() {
       geo_bbox: { latMin: -11.0, latMax: -7.0, lngMin: 110.0, lngMax: 128.0 },
       kde_params: { bandwidth: 2.0, n_observations: 640, mean_lat: -8.5, mean_lng: 118.0 },
       clinical_priority: 4,
-      reference_images: ['/greenviper-1.jpg'],
+      reference_images: [
+        'https://images.unsplash.com/photo-1582239454477-8bb0b1c0bfeb?auto=format&fit=crop&w=400&q=80&fm=webp'
+      ],
       morphological_traits: ['Warna hijau terang (ada variasi biru)', 'Kepala berbentuk segitiga', 'Ekor kemerahan']
     },
     {
@@ -149,13 +166,15 @@ export async function seedSpeciesDatabase() {
       geo_bbox: { latMin: -11.0, latMax: 6.0, lngMin: 95.0, lngMax: 141.0 },
       kde_params: { bandwidth: 2.0, n_observations: 4300, mean_lat: -2.0, mean_lng: 115.0 },
       clinical_priority: 1,
-      reference_images: ['/bronzeback-1.jpg'],
+      reference_images: [
+        'https://images.unsplash.com/photo-1504450758481-7338eba7524a?auto=format&fit=crop&w=400&q=80&fm=webp'
+      ],
       morphological_traits: ['Tubuh sangat ramping', 'Garis hitam di sepanjang sisi mata', 'Sisik perunggu metalik']
     }
   ];
 
   await db.species.bulkAdd(initialSpecies);
-  console.log('Seeded species local database matrix.');
+  console.log('Seeded species local database matrix with high-quality WebP online assets.');
 }
 
 // Insert incident log, encrypting the details

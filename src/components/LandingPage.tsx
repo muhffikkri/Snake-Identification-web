@@ -118,7 +118,7 @@ export default function LandingPage({ onStartApp }: LandingPageProps) {
           <div className="relative w-full max-w-md bg-white border border-gray-200 rounded-3xl shadow-2xl overflow-hidden p-3.5">
             <div className="rounded-2xl overflow-hidden h-64 bg-gray-100 relative">
               <img
-                src="https://images.unsplash.com/photo-1618826411640-d6df44dd3f7a?auto=format&fit=crop&w=600&q=80"
+                src="https://images.unsplash.com/photo-1618826411640-d6df44dd3f7a?auto=format&fit=crop&w=600&q=80&fm=webp"
                 alt="Snake Identification AI Mockup"
                 className="w-full h-full object-cover"
               />
