@@ -11,21 +11,21 @@ vi.mock('../db/db', () => {
         toArray: vi.fn().mockResolvedValue([
           {
             taxon_id: 0,
-            scientific_name: 'Naja sputatrix',
-            common_name_indonesian: 'Ular Kobra Jawa',
+            scientific_name: 'Acanthophis laevis',
+            common_name_indonesian: 'Ular Kematian Papua',
             venom_type: 'NEUROTOXIC',
-            geo_bbox: { latMin: -9, latMax: -5, lngMin: 105, lngMax: 116 },
-            reference_images: ['https://mock-image.com/cobra.jpg'],
-            morphological_traits: ['Tudung leher melebar']
+            geo_bbox: { latMin: -9, latMax: -1, lngMin: 130, lngMax: 141 },
+            reference_images: ['/dataset/Acanthophis_laevis_obs121339246_photo205315764.jpg'],
+            morphological_traits: ['Tubuh pendek gempal']
           },
           {
             taxon_id: 2,
-            scientific_name: 'Calloselasma rhodostoma',
-            common_name_indonesian: 'Ular Tanah',
-            venom_type: 'HEMOTOXIC',
-            geo_bbox: { latMin: -9, latMax: 6, lngMin: 95, lngMax: 116 },
-            reference_images: ['https://mock-image.com/viper.jpg'],
-            morphological_traits: ['Corak segitiga coklat gelap']
+            scientific_name: 'Ahaetulla prasina',
+            common_name_indonesian: 'Ular Pucuk Hijau',
+            venom_type: 'NON-VENOMOUS',
+            geo_bbox: { latMin: -11, latMax: 6, lngMin: 95, lngMax: 141 },
+            reference_images: ['/dataset/Ahaetulla_prasina_0003.jpg'],
+            morphological_traits: ['Tubuh hijau sangat ramping']
           }
         ])
       },
@@ -55,15 +55,15 @@ describe('Inference Component', () => {
     render(<Inference onNavigate={mockOnNavigate} onSetIncidentId={mockOnSetIncidentId} />);
 
     expect(screen.getByText('Pindai / Ambil Foto')).toBeInTheDocument();
-    expect(screen.getByText('🐍 Cobra Jawa')).toBeInTheDocument();
-    expect(screen.getByText('🐍 Ular Tanah')).toBeInTheDocument();
+    expect(screen.getByText('Acanthophis laevis (Obs 1)')).toBeInTheDocument();
+    expect(screen.getByText('Ahaetulla prasina')).toBeInTheDocument();
   });
 
   it('executes sequential Edge-AI pipeline and displays prediction result cards', async () => {
     render(<Inference onNavigate={mockOnNavigate} onSetIncidentId={mockOnSetIncidentId} />);
 
-    // Click quick demo Cobra Jawa
-    const cobraBtn = screen.getByText('🐍 Cobra Jawa');
+    // Click quick demo Acanthophis laevis
+    const cobraBtn = screen.getByText('Acanthophis laevis (Obs 1)');
     fireEvent.click(cobraBtn);
 
     // Verify loading pipeline logs appear
@@ -74,7 +74,7 @@ describe('Inference Component', () => {
 
     // Verify result screen elements directly (synchronously)
     expect(screen.getByText('Hasil Prediksi Utama')).toBeInTheDocument();
-    expect(screen.getAllByText('Naja sputatrix').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Acanthophis laevis').length).toBeGreaterThan(0);
     expect(screen.getAllByText('NEUROTOXIC').length).toBeGreaterThan(0);
     expect(screen.getByText('Konfirmasi & Lanjut ke Triage')).toBeInTheDocument();
   });

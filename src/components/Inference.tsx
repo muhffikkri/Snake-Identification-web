@@ -4,6 +4,51 @@ import { db, addIncidentLog } from '../db/db';
 import { useAppStore } from '../store/store';
 import { logger } from '../services/logger';
 
+const DATASET_IMAGES = [
+  {
+    path: '/dataset/Acanthophis_laevis_obs121339246_photo205315764.jpg',
+    label: 'Acanthophis laevis (Obs 1)',
+    risk: 'NEUROTOXIC',
+    badgeColor: 'bg-[#70020F]'
+  },
+  {
+    path: '/dataset/Acanthophis_laevis_obs137275705_photo234421463.jpg',
+    label: 'Acanthophis laevis (Obs 2)',
+    risk: 'NEUROTOXIC',
+    badgeColor: 'bg-[#70020F]'
+  },
+  {
+    path: '/dataset/Acanthophis_laevis_obs19025516_photo29178993.jpg',
+    label: 'Acanthophis laevis (Obs 3)',
+    risk: 'NEUROTOXIC',
+    badgeColor: 'bg-[#70020F]'
+  },
+  {
+    path: '/dataset/Ahaetulla_fasciolata_obs202932892_photo358471931.jpg',
+    label: 'Ahaetulla fasciolata (Obs 1)',
+    risk: 'NON-VENOMOUS',
+    badgeColor: 'bg-[#388E3C]'
+  },
+  {
+    path: '/dataset/Ahaetulla_fasciolata_obs310503736_photo560406804.jpg',
+    label: 'Ahaetulla fasciolata (Obs 2)',
+    risk: 'NON-VENOMOUS',
+    badgeColor: 'bg-[#388E3C]'
+  },
+  {
+    path: '/dataset/Ahaetulla_prasina_0003.jpg',
+    label: 'Ahaetulla prasina',
+    risk: 'NON-VENOMOUS',
+    badgeColor: 'bg-[#388E3C]'
+  },
+  {
+    path: '/dataset/Ahaetulla_rufusoculara_obs252803925_photo456126350.jpg',
+    label: 'Ahaetulla rufusoculara',
+    risk: 'NON-VENOMOUS',
+    badgeColor: 'bg-[#388E3C]'
+  }
+];
+
 interface InferenceProps {
   onNavigate: (page: string) => void;
   onSetIncidentId: (id: string) => void;
@@ -54,19 +99,41 @@ export default function Inference({ onNavigate, onSetIncidentId }: InferenceProp
     const allSpecies = await db.species.toArray();
     const lat = currentGPS?.lat || -6.2088;
     const lng = currentGPS?.lng || 106.8456;
+
+    // Determine target species based on file path or name
+    let targetScientificName = '';
+    const imgLower = imgSrc.toLowerCase();
+    if (imgLower.includes('acanthophis_laevis')) {
+      targetScientificName = 'Acanthophis laevis';
+    } else if (imgLower.includes('ahaetulla_fasciolata')) {
+      targetScientificName = 'Ahaetulla fasciolata';
+    } else if (imgLower.includes('ahaetulla_prasina')) {
+      targetScientificName = 'Ahaetulla prasina';
+    } else if (imgLower.includes('ahaetulla_rufusoculara')) {
+      targetScientificName = 'Ahaetulla rufusoculara';
+    } else {
+      // Fallback for custom image uploads or testing mocks
+      if (allSpecies.length > 0) {
+        // Match scientific name mock from testing or default to first
+        const match = allSpecies.find(s => imgLower.includes(s.scientific_name.toLowerCase().replace(' ', '_')));
+        targetScientificName = match ? match.scientific_name : allSpecies[0].scientific_name;
+      }
+    }
     
     // Simulate eliminating species based on GPS bounding boxes
     const matched = allSpecies.map(sp => {
-      const inBbox = lat >= sp.geo_bbox.latMin && lat <= sp.geo_bbox.latMax &&
-                     lng >= sp.geo_bbox.lngMin && lng <= sp.geo_bbox.lngMax;
+      // For simulation, force the target species to pass the geospatial bounding box constraint
+      const inBbox = (lat >= sp.geo_bbox.latMin && lat <= sp.geo_bbox.latMax &&
+                      lng >= sp.geo_bbox.lngMin && lng <= sp.geo_bbox.lngMax) ||
+                     (sp.scientific_name === targetScientificName);
       const geo_binary = inBbox ? 1.0 : 0.0;
       
       let p_vis = 0.05;
-      if (sp.scientific_name.includes('sputatrix')) p_vis = 0.70;
-      else if (sp.scientific_name.includes('fasciatus')) p_vis = 0.15;
-      else if (sp.scientific_name.includes('rhodostoma')) p_vis = 0.08;
-      else if (sp.scientific_name.includes('insularis')) p_vis = 0.02;
-      else if (sp.scientific_name.includes('pictus')) p_vis = 0.05;
+      if (sp.scientific_name === targetScientificName) {
+        p_vis = 0.88;
+      } else {
+        p_vis = 0.04;
+      }
 
       const p_fused = p_vis * geo_binary;
 
@@ -88,7 +155,7 @@ export default function Inference({ onNavigate, onSetIncidentId }: InferenceProp
     await addLog("Inference finalized. Macro F1 = 0.7406.", 3100);
 
     setTimeout(() => {
-      const primary = finalResults[0];
+      const primary = finalResults[0] || allSpecies[0];
       const alts = finalResults.slice(1, 5);
       
       setPrimaryResult(primary);
@@ -129,13 +196,12 @@ export default function Inference({ onNavigate, onSetIncidentId }: InferenceProp
 
   const handleSimulateDirectSelection = (taxonId: number) => {
     const mockImages: Record<number, string> = {
-      0: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?auto=format&fit=crop&w=400&q=80&fm=webp',
-      1: 'https://images.unsplash.com/photo-1604186838320-c7f822919558?auto=format&fit=crop&w=400&q=80&fm=webp',
-      2: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=400&q=80&fm=webp',
-      3: 'https://images.unsplash.com/photo-1582239454477-8bb0b1c0bfeb?auto=format&fit=crop&w=400&q=80&fm=webp',
-      4: 'https://images.unsplash.com/photo-1504450758481-7338eba7524a?auto=format&fit=crop&w=400&q=80&fm=webp'
+      0: '/dataset/Acanthophis_laevis_obs121339246_photo205315764.jpg',
+      1: '/dataset/Ahaetulla_fasciolata_obs202932892_photo358471931.jpg',
+      2: '/dataset/Ahaetulla_prasina_0003.jpg',
+      3: '/dataset/Ahaetulla_rufusoculara_obs252803925_photo456126350.jpg'
     };
-    startAnalysis(mockImages[taxonId]);
+    startAnalysis(mockImages[taxonId] || mockImages[0]);
   };
 
   const handleProceedToTriage = async () => {
@@ -241,37 +307,24 @@ export default function Inference({ onNavigate, onSetIncidentId }: InferenceProp
             <div className="md:col-span-6 flex flex-col justify-center mt-6 md:mt-0">
               <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
                 <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 text-center">
-                  SIMULASI DEMO CEPAT (PILIH ULAR)
+                  SIMULASI DEMO (PILIH FOTO DATASET)
                 </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => handleSimulateDirectSelection(0)}
-                    className="p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-800 text-left flex justify-between items-center transition-colors"
-                  >
-                    <span>🐍 Cobra Jawa</span>
-                    <span className="bg-[#70020F] text-white text-[7px] font-extrabold px-1.5 py-0.5 rounded uppercase">V1</span>
-                  </button>
-                  <button
-                    onClick={() => handleSimulateDirectSelection(2)}
-                    className="p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-800 text-left flex justify-between items-center transition-colors"
-                  >
-                    <span>🐍 Ular Tanah</span>
-                    <span className="bg-[#F57C00] text-white text-[7px] font-extrabold px-1.5 py-0.5 rounded uppercase">V2</span>
-                  </button>
-                  <button
-                    onClick={() => handleSimulateDirectSelection(3)}
-                    className="p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-800 text-left flex justify-between items-center transition-colors"
-                  >
-                    <span>🐍 Bangkai Ular</span>
-                    <span className="bg-[#F57C00] text-white text-[7px] font-extrabold px-1.5 py-0.5 rounded uppercase">V3</span>
-                  </button>
-                  <button
-                    onClick={() => handleSimulateDirectSelection(4)}
-                    className="p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-800 text-left flex justify-between items-center transition-colors"
-                  >
-                    <span>🐍 Bronzeback</span>
-                    <span className="bg-[#388E3C] text-white text-[7px] font-extrabold px-1.5 py-0.5 rounded uppercase">V4</span>
-                  </button>
+                <div className="grid grid-cols-2 gap-2 max-h-[310px] overflow-y-auto pr-1">
+                  {DATASET_IMAGES.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => startAnalysis(img.path)}
+                      className="p-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 hover:border-[#2E7D6F] rounded-xl text-[10px] font-bold text-gray-800 text-left flex items-center space-x-2 transition-all duration-200"
+                    >
+                      <img src={img.path} alt={img.label} className="w-8 h-8 rounded object-cover flex-shrink-0 border border-gray-200" />
+                      <div className="flex-1 min-w-0">
+                        <span className="block truncate font-extrabold text-[8px] text-gray-900 leading-tight">{img.label}</span>
+                        <span className={`inline-block text-[6px] font-extrabold px-1.5 py-0.2 rounded text-white mt-1 uppercase ${img.badgeColor}`}>
+                          {img.risk}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

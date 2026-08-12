@@ -135,60 +135,60 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           id: 'inc_mock1',
           lat: -6.2088,
           lng: 106.8456,
-          species: 'Naja sputatrix',
+          species: 'Acanthophis laevis',
           risk: 'NEUROTOXIC' as const,
           grade: 3,
           pain: 8,
           swelling: 3,
-          localEffects: ['Pendarahan Aktif'],
-          systemicEffects: ['Ptosis (Kelopak Mata Layu)', 'Sulit Menelan (Dysphagia)'],
+          localEffects: ['Pendarahan Aktif', 'Nyeri Hebat'],
+          systemicEffects: ['Ptosis (Kelopak Mata Layu)', 'Kelemahan Otot'],
           vital: { hr: 95, bp: '130/85', spo2: 94 },
-          photo: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?auto=format&fit=crop&w=400&q=80',
+          photo: '/dataset/Acanthophis_laevis_obs121339246_photo205315764.jpg',
           sync: 'PENDING' as const
         },
         {
           id: 'inc_mock2',
           lat: -6.9175,
           lng: 107.6191,
-          species: 'Calloselasma rhodostoma',
-          risk: 'HEMOTOXIC' as const,
-          grade: 2,
-          pain: 6,
-          swelling: 2,
-          localEffects: ['Kebas/Mati Rasa Lokal'],
+          species: 'Ahaetulla fasciolata',
+          risk: 'NON-VENOMOUS' as const,
+          grade: 0,
+          pain: 2,
+          swelling: 1,
+          localEffects: ['Gatal Ringan'],
           systemicEffects: [],
-          vital: { hr: 84, bp: '120/80', spo2: 98 },
-          photo: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=400&q=80',
+          vital: { hr: 72, bp: '120/80', spo2: 99 },
+          photo: '/dataset/Ahaetulla_fasciolata_obs202932892_photo358471931.jpg',
           sync: 'SYNCED' as const
         },
         {
           id: 'inc_mock3',
           lat: -7.2575,
           lng: 112.7521,
-          species: 'Bungarus fasciatus',
-          risk: 'NEUROTOXIC' as const,
-          grade: 4,
-          pain: 9,
-          swelling: 2,
-          localEffects: ['Pendarahan Aktif', 'Kebas/Mati Rasa Lokal'],
-          systemicEffects: ['Ptosis (Kelopak Mata Layu)', 'Sesak Napas (Respiratory Failure)'],
-          vital: { hr: 115, bp: '145/95', spo2: 88 },
-          photo: 'https://images.unsplash.com/photo-1604186838320-c7f822919558?auto=format&fit=crop&w=400&q=80',
+          species: 'Ahaetulla prasina',
+          risk: 'NON-VENOMOUS' as const,
+          grade: 0,
+          pain: 1,
+          swelling: 0,
+          localEffects: [],
+          systemicEffects: [],
+          vital: { hr: 68, bp: '115/75', spo2: 100 },
+          photo: '/dataset/Ahaetulla_prasina_0003.jpg',
           sync: 'SYNCED' as const
         },
         {
           id: 'inc_mock4',
           lat: -8.4095,
           lng: 115.1889,
-          species: 'Trimeresurus insularis',
-          risk: 'HEMOTOXIC' as const,
-          grade: 3,
-          pain: 7,
-          swelling: 3,
-          localEffects: ['Lepuhan Cairan (Blisters)'],
-          systemicEffects: ['Muntah Darah (Hematemesis)'],
-          vital: { hr: 92, bp: '125/82', spo2: 95 },
-          photo: 'https://images.unsplash.com/photo-1582239454477-8bb0b1c0bfeb?auto=format&fit=crop&w=400&q=80',
+          species: 'Ahaetulla rufusoculara',
+          risk: 'NON-VENOMOUS' as const,
+          grade: 0,
+          pain: 2,
+          swelling: 0,
+          localEffects: [],
+          systemicEffects: [],
+          vital: { hr: 75, bp: '120/80', spo2: 99 },
+          photo: '/dataset/Ahaetulla_rufusoculara_obs252803925_photo456126350.jpg',
           sync: 'PENDING' as const
         }
       ];
@@ -251,7 +251,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     });
 
     // Find most reported snake
-    let mostCommon = 'Naja sputatrix'; // default dummy
+    let mostCommon = 'Acanthophis laevis'; // default dummy
     let maxCount = 0;
     Object.entries(snakeCounts).forEach(([name, count]) => {
       if (count > maxCount) {
@@ -261,7 +261,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     });
 
     const matchingSpecies = species.find(s => s.scientific_name === mostCommon);
-    const mostCommonImg = matchingSpecies?.reference_images[0] || 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?auto=format&fit=crop&w=400&q=80&fm=webp';
+    const mostCommonImg = matchingSpecies?.reference_images[0] || '/dataset/Acanthophis_laevis_obs121339246_photo205315764.jpg';
     const mostCommonVenom = matchingSpecies?.venom_type || 'NEUROTOXIC';
 
     // Calculate emergency ratio
@@ -351,7 +351,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   // Helper to resolve snake image from scientific name
   const getSnakeImage = (name: string) => {
     const match = speciesList.find(s => s.scientific_name === name);
-    return match?.reference_images[0] || 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?auto=format&fit=crop&w=400&q=80';
+    return match?.reference_images[0] || '/dataset/Acanthophis_laevis_obs121339246_photo205315764.jpg';
   };
 
   return (

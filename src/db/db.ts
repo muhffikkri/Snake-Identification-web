@@ -90,91 +90,79 @@ export const db = new SnakeBiteDatabase();
 export async function seedSpeciesDatabase() {
   const count = await db.species.count();
   const first = count > 0 ? await db.species.toCollection().first() : null;
-  const needsReSeed = !first || !first.reference_images[0] || !first.reference_images[0].includes('fm=webp');
+  const needsReSeed = !first || !first.reference_images[0] || !first.reference_images[0].includes('/dataset/');
 
   if (count > 0 && !needsReSeed) return;
 
   if (needsReSeed && count > 0) {
     await db.species.clear();
-    console.log('Cleared old species database to apply new WebP asset links.');
+    console.log('Cleared old species database to apply new local dataset asset links.');
   }
 
   const initialSpecies: SnakeSpecies[] = [
     {
       taxon_id: 0,
-      scientific_name: 'Naja sputatrix',
-      common_name_indonesian: 'Ular Kobra Jawa (Javan Spitting Cobra)',
+      scientific_name: 'Acanthophis laevis',
+      common_name_indonesian: 'Ular Kematian Papua (Smooth-scaled Death Adder)',
       venom_type: 'NEUROTOXIC',
-      province_bitmask: 0b0000000000000000000000000000001111, // Java provinces
-      geo_bbox: { latMin: -9.0, latMax: -5.0, lngMin: 105.0, lngMax: 116.0 },
-      kde_params: { bandwidth: 2.0, n_observations: 1540, mean_lat: -7.2, mean_lng: 110.0 },
+      province_bitmask: 0b1000000000000000000000000000000000,
+      geo_bbox: { latMin: -9.0, latMax: -1.0, lngMin: 130.0, lngMax: 141.0 },
+      kde_params: { bandwidth: 2.0, n_observations: 350, mean_lat: -4.5, mean_lng: 138.0 },
       clinical_priority: 5,
       reference_images: [
-        'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?auto=format&fit=crop&w=400&q=80&fm=webp',
-        'https://images.unsplash.com/photo-1531386151447-fd762e7a3ae8?auto=format&fit=crop&w=400&q=80&fm=webp'
+        '/dataset/Acanthophis_laevis_obs121339246_photo205315764.jpg',
+        '/dataset/Acanthophis_laevis_obs137275705_photo234421463.jpg',
+        '/dataset/Acanthophis_laevis_obs19025516_photo29178993.jpg'
       ],
-      morphological_traits: ['Tudung leher melebar', 'Warna hitam legam/kecoklatan', 'Menyemburkan bisa']
+      morphological_traits: ['Tubuh pendek gempal', 'Kepala segitiga lebar', 'Ekor cacing tipis pemancing mangsa', 'Warna coklat kemerahan bergaris pita']
     },
     {
       taxon_id: 1,
-      scientific_name: 'Bungarus fasciatus',
-      common_name_indonesian: 'Ular Welang (Banded Krait)',
-      venom_type: 'NEUROTOXIC',
-      province_bitmask: 0b0000000000000000000000000011111111, // Java + Sumatra
-      geo_bbox: { latMin: -9.0, latMax: 6.0, lngMin: 95.0, lngMax: 116.0 },
-      kde_params: { bandwidth: 2.0, n_observations: 820, mean_lat: -4.5, mean_lng: 107.5 },
-      clinical_priority: 5,
+      scientific_name: 'Ahaetulla fasciolata',
+      common_name_indonesian: 'Ular Pucuk Loreng (Speckled-headed Vine Snake)',
+      venom_type: 'NON-VENOMOUS',
+      province_bitmask: 0b0000000000000000000000000011111111,
+      geo_bbox: { latMin: -9.0, latMax: 6.0, lngMin: 95.0, lngMax: 120.0 },
+      kde_params: { bandwidth: 2.0, n_observations: 480, mean_lat: -2.5, mean_lng: 110.0 },
+      clinical_priority: 1,
       reference_images: [
-        'https://images.unsplash.com/photo-1604186838320-c7f822919558?auto=format&fit=crop&w=400&q=80&fm=webp'
+        '/dataset/Ahaetulla_fasciolata_obs202932892_photo358471931.jpg',
+        '/dataset/Ahaetulla_fasciolata_obs310503736_photo560406804.jpg'
       ],
-      morphological_traits: ['Belang hitam-kuning melingkar', 'Penampang tubuh segitiga', 'Ekor tumpul']
+      morphological_traits: ['Kepala berbentuk lonjong meruncing', 'Corak loreng melintang halus', 'Mata horizontal celah']
     },
     {
       taxon_id: 2,
-      scientific_name: 'Calloselasma rhodostoma',
-      common_name_indonesian: 'Ular Tanah (Malayan Pit Viper)',
-      venom_type: 'HEMOTOXIC',
-      province_bitmask: 0b0000000000000000000000000000001111, // Java, Sumatra
-      geo_bbox: { latMin: -9.0, latMax: 6.0, lngMin: 95.0, lngMax: 116.0 },
-      kde_params: { bandwidth: 2.0, n_observations: 2100, mean_lat: -6.8, mean_lng: 108.0 },
-      clinical_priority: 4,
+      scientific_name: 'Ahaetulla prasina',
+      common_name_indonesian: 'Ular Pucuk Hijau (Oriental Whip Snake)',
+      venom_type: 'NON-VENOMOUS',
+      province_bitmask: 0b1111111111111111111111111111111111,
+      geo_bbox: { latMin: -11.0, latMax: 6.0, lngMin: 95.0, lngMax: 141.0 },
+      kde_params: { bandwidth: 2.0, n_observations: 2400, mean_lat: -2.0, mean_lng: 115.0 },
+      clinical_priority: 1,
       reference_images: [
-        'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=400&q=80&fm=webp'
+        '/dataset/Ahaetulla_prasina_0003.jpg'
       ],
-      morphological_traits: ['Tubuh pendek gempal', 'Corak segitiga coklat gelap', 'Moncong meruncing ke atas']
+      morphological_traits: ['Tubuh hijau sangat ramping', 'Moncong runcing panjang', 'Mata horizontal celah']
     },
     {
       taxon_id: 3,
-      scientific_name: 'Trimeresurus insularis',
-      common_name_indonesian: 'Ular Bangkai Laut (White-lipped Island Pit Viper)',
-      venom_type: 'HEMOTOXIC',
-      province_bitmask: 0b0000000000000000000000000011110000, // Lesser Sunda, East Java
-      geo_bbox: { latMin: -11.0, latMax: -7.0, lngMin: 110.0, lngMax: 128.0 },
-      kde_params: { bandwidth: 2.0, n_observations: 640, mean_lat: -8.5, mean_lng: 118.0 },
-      clinical_priority: 4,
-      reference_images: [
-        'https://images.unsplash.com/photo-1582239454477-8bb0b1c0bfeb?auto=format&fit=crop&w=400&q=80&fm=webp'
-      ],
-      morphological_traits: ['Warna hijau terang (ada variasi biru)', 'Kepala berbentuk segitiga', 'Ekor kemerahan']
-    },
-    {
-      taxon_id: 4,
-      scientific_name: 'Dendrelaphis pictus',
-      common_name_indonesian: 'Ular Tali Picik (Painted Bronzeback)',
+      scientific_name: 'Ahaetulla rufusoculara',
+      common_name_indonesian: 'Ular Pucuk Mata Merah (Red-eyed Whip Snake)',
       venom_type: 'NON-VENOMOUS',
-      province_bitmask: 0b1111111111111111111111111111111111, // All provinces
-      geo_bbox: { latMin: -11.0, latMax: 6.0, lngMin: 95.0, lngMax: 141.0 },
-      kde_params: { bandwidth: 2.0, n_observations: 4300, mean_lat: -2.0, mean_lng: 115.0 },
+      province_bitmask: 0b0000000000000000000000000000001111,
+      geo_bbox: { latMin: -9.0, latMax: 6.0, lngMin: 95.0, lngMax: 116.0 },
+      kde_params: { bandwidth: 2.0, n_observations: 150, mean_lat: -6.0, mean_lng: 106.0 },
       clinical_priority: 1,
       reference_images: [
-        'https://images.unsplash.com/photo-1504450758481-7338eba7524a?auto=format&fit=crop&w=400&q=80&fm=webp'
+        '/dataset/Ahaetulla_rufusoculara_obs252803925_photo456126350.jpg'
       ],
-      morphological_traits: ['Tubuh sangat ramping', 'Garis hitam di sepanjang sisi mata', 'Sisik perunggu metalik']
+      morphological_traits: ['Mata berwarna kemerahan', 'Tubuh ramping memanjang', 'Garis putih kekuningan di bagian perut']
     }
   ];
 
   await db.species.bulkAdd(initialSpecies);
-  console.log('Seeded species local database matrix with high-quality WebP online assets.');
+  console.log('Seeded species local database matrix with local dataset assets.');
 }
 
 // Insert incident log, encrypting the details
