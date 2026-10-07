@@ -1,258 +1,121 @@
-import React, { useState, useEffect } from 'react';
-import { db, getIncidentLog, addIncidentLog, type IncidentDetails } from '../db/db';
-import { useAppStore } from '../store/store';
-import { Camera, Clock, Plus, Trash2, Volume2, CheckCircle2, ChevronRight, Check, MapPin } from 'lucide-react';
-import { logger } from '../services/logger';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, ArrowRight, Camera, Check, Lock, Plus, Trash2 } from 'lucide-react';
+import { upsertIncident, type SeverityGrade, type SnakeSpecies, type VenomClass } from '../db/db';
+import { useAppStore, DEFAULT_GPS } from '../store/store';
+import {
+  ALWAYS_DO,
+  HEMOTOXIC_SYMPTOMS,
+  LOCAL_SYMPTOMS,
+  NEVER_DO,
+  NEUROTOXIC_SYMPTOMS,
+  SEVERITY,
+  VENOM,
+  formatDateTime,
+  gradeFromSymptoms,
+  recheckInterval,
+} from '../lib/clinical';
+import { Badge, Card, SectionTitle } from './ui/Primitives';
+import { newIncidentId } from '../lib/data';
 
 interface TriageProps {
-  incidentId: string;
-  onNavigate: (page: string) => void;
+  species: SnakeSpecies | null;
+  imageDataUrl: string | null;
+  onOpenSpecies: (taxonId: number) => void;
+  onFinished: () => void;
 }
 
-export default function Triage({ incidentId, onNavigate }: TriageProps) {
-  const { currentGPS, updatePendingSyncCount } = useAppStore();
+const STEPS = ['Bite details', 'Local signs', 'Whole-body signs', 'Result'] as const;
 
-  const [currentStep, setCurrentStep] = useState<number>(1);
-  const [biteLocation, setBiteLocation] = useState<string>('Lengan Kanan');
-  const [biteTime, setBiteTime] = useState<string>(new Date().toISOString().substring(0, 16));
+const SWELLING: Record<number, string> = {
+  0: 'No swelling',
+  1: 'Limited to the area around the bite',
+  2: 'Spread to half the limb',
+  3: 'Spread to the whole limb',
+  4: 'Spread past the limb toward the trunk',
+};
 
-  const [painScale, setPainScale] = useState<number>(1);
-  const [swellingGrade, setSwellingGrade] = useState<number>(0);
+const BITE_LOCATIONS = [
+  'Lower leg',
+  'Thigh',
+  'Foot or ankle',
+  'Lower arm',
+  'Hand or finger',
+  'Neck or head',
+];
+
+export default function Triage({ species, imageDataUrl, onOpenSpecies, onFinished }: TriageProps) {
+  const { gps, accountName, setAccountName, refreshPendingSyncCount } = useAppStore();
+
+  const [step, setStep] = useState(0);
+  const [incidentId, setIncidentId] = useState<string>('');
+
+  const [biteLocation, setBiteLocation] = useState('Lower leg');
+  const [biteTime, setBiteTime] = useState(() => new Date().toISOString().slice(0, 16));
+  const [painScale, setPainScale] = useState(1);
+  const [swellingGrade, setSwellingGrade] = useState(0);
   const [localEffects, setLocalEffects] = useState<string[]>([]);
-
   const [systemicEffects, setSystemicEffects] = useState<string[]>([]);
+  const [hr, setHr] = useState(80);
+  const [bp, setBp] = useState('120/80');
+  const [spo2, setSpo2] = useState(98);
+  const [photos, setPhotos] = useState<Array<{ dataUrl: string; at: number }>>([]);
+  const [creatingAccount, setCreatingAccount] = useState(false);
+  const [draftName, setDraftName] = useState('');
+  const [pendingSave, setPendingSave] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const [hr, setHr] = useState<number>(80);
-  const [bp, setBp] = useState<string>('120/80');
-  const [spo2, setSpo2] = useState<number>(98);
-
-  const [woundPhotos, setWoundPhotos] = useState<Array<{ blob: string, timestamp: number }>>([]);
-
-  const [severityGrade, setSeverityGrade] = useState<number>(0);
-  const [whoProtocol, setWhoProtocol] = useState<string[]>([]);
-  const [alarmInterval, setAlarmInterval] = useState<number>(30);
-  const [alarmActive, setAlarmActive] = useState<boolean>(false);
-  const [alarmTimerSeconds, setAlarmTimerSeconds] = useState<number>(0);
-
-  const triggerHaptic = (duration: number) => {
-    if ('vibrate' in navigator) {
-      navigator.vibrate(duration);
-    }
-  };
-
-  const localEffectsChoices = [
-    'Pendarahan Aktif', 'Nekrosis Kulit (Kulit Mati)', 'Lepuhan Cairan (Blisters)', 'Kebas/Mati Rasa Lokal'
-  ];
-
-  const neurotoxicChoices = [
-    'Ptosis (Kelopak Mata Layu)', 'Sulit Menelan (Dysphagia)', 'Bicara Cadel (Dysarthria)', 'Kelemahan Otot/Kelumpuhan', 'Sesak Napas (Respiratory Failure)'
-  ];
-
-  const hemotoxicChoices = [
-    'Muntah Darah (Hematemesis)', 'Gusi Berdarah', 'Memar Luas (Ecchymosis)', 'Kencing Merah (Hematuria)'
-  ];
+  const grade = useMemo<SeverityGrade>(
+    () => gradeFromSymptoms({ swellingGrade, painScale, localEffects, systemicEffects, spo2 }),
+    [painScale, swellingGrade, localEffects, systemicEffects, spo2],
+  );
+  const severity = SEVERITY[grade];
 
   useEffect(() => {
-    const loadIncident = async () => {
-      if (!incidentId) return;
-      try {
-        const data = await getIncidentLog(incidentId);
-        if (data) {
-          const { details, photos } = data;
-          setBiteLocation(details.symptoms.bite_location);
-          setPainScale(details.symptoms.pain_scale);
-          setSwellingGrade(details.symptoms.swelling_grade);
-          setLocalEffects(details.symptoms.local_effects);
-          setSystemicEffects(details.symptoms.systemic_effects);
-          setHr(details.symptoms.vital_signs.hr);
-          setBp(details.symptoms.vital_signs.bp);
-          setSpo2(details.symptoms.vital_signs.spo2);
+    setIncidentId(newIncidentId());
+  }, []);
 
-          const mappedPhotos = photos.map((blob, index) => ({
-            blob,
-            timestamp: Date.now() - (photos.length - 1 - index) * 600000
-          }));
-          setWoundPhotos(mappedPhotos);
+  useEffect(() => {
+    if (imageDataUrl && photos.length === 0) {
+      setPhotos([{ dataUrl: imageDataUrl, at: Date.now() }]);
+    }
+    // Only seeds the first photo; later captures are user actions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageDataUrl]);
 
-          logger.info('Triage', `Loaded existing incident data for triage: ${incidentId}`);
-        }
-      } catch (e) {
-        logger.error('Triage', 'Failed to load existing incident log', e);
+  function toggle(list: string[], setList: (next: string[]) => void, value: string) {
+    setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
+  }
+
+  function addPhoto(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setPhotos((prev) => [...prev, { dataUrl: reader.result as string, at: Date.now() }]);
       }
     };
-    loadIncident();
-  }, [incidentId]);
+    reader.readAsDataURL(file);
+  }
 
-  useEffect(() => {
-    let grade = 0;
-
-    const hasNeurotoxic = systemicEffects.some(e => neurotoxicChoices.includes(e));
-    const hasHemotoxic = systemicEffects.some(e => hemotoxicChoices.includes(e));
-    const hasSevereLocal = swellingGrade >= 3 || localEffects.includes('Nekrosis Kulit (Kulit Mati)');
-
-    if (spo2 < 90 || systemicEffects.includes('Sesak Napas (Respiratory Failure)')) {
-      grade = 4;
-    } else if (hasNeurotoxic || hasHemotoxic || swellingGrade === 4) {
-      grade = 3;
-    } else if (hasSevereLocal || localEffects.includes('Pendarahan Aktif')) {
-      grade = 2;
-    } else if (painScale > 4 || swellingGrade >= 1) {
-      grade = 1;
-    } else {
-      grade = 0;
-    }
-
-    setSeverityGrade(grade);
-
-    const protocol = [];
-    protocol.push('IMOBILISASI: Posisikan anggota tubuh yang digigit sejajar jantung, sanggah dengan bidai/kayu, lalu balut dengan perban elastis. Batasi gerakan ekstremitas secara penuh.');
-    protocol.push('Dilarang keras memasang Tourniquet (ikatan ketat) karena mematikan aliran darah secara total dan memicu nekrosis kulit hebat.');
-    protocol.push('Dilarang menyedot racun menggunakan mulut/alat sedot manual, menoreh luka, menyayat, memijat, maupun mengoleskan jamu tradisional.');
-
-    if (grade === 4) {
-      protocol.unshift('TINDAKAN KRITIS (Grade 4): Segera fasilitasi ventilasi oksigen & Resusitasi Jantung Paru (RJP) jika napas terengah-engah. Segera evakuasi pasien ke ICU Rumah Sakit!');
-    } else if (grade === 3) {
-      protocol.unshift('DARURAT SISTEMIK (Grade 3): Pasang akses infus intravena (IV) ganda. Siapkan Anti-Bisa Ular (SABU) polivalen secara darurat.');
-    } else if (grade === 2) {
-      protocol.unshift('RISIKO MODERAT (Grade 2): Segera rujuk ke Rumah Sakit terdekat. Siapkan observasi SABU jika gejala memburuk secara progresif.');
-    } else if (grade === 1) {
-      protocol.unshift('PEMANTAUAN KLINIS (Grade 1): Bersihkan luka dengan antiseptik/alkohol swab. Berikan parasetamol untuk analgesik. Pantau pembengkakan berkala.');
-    } else {
-      protocol.unshift('Grade 0 (Nir-Envenomasi): Observasi ketat di Puskesmas/RS selama minimal 6-12 jam. Gejala envenomasi bisa timbul terlambat.');
-    }
-
-    setWhoProtocol(protocol);
-
-    if (grade >= 3) {
-      setAlarmInterval(15);
-    } else if (grade >= 1) {
-      setAlarmInterval(30);
-    } else {
-      setAlarmInterval(60);
-    }
-
-    logger.info('Triage', 'Severity recalculated', { grade, alarmInterval: grade >= 3 ? 15 : grade >= 1 ? 30 : 60 });
-  }, [painScale, swellingGrade, localEffects, systemicEffects, spo2]);
-
-  useEffect(() => {
-    let intervalId: any;
-    if (alarmActive && alarmTimerSeconds > 0) {
-      intervalId = setInterval(() => {
-        setAlarmTimerSeconds(prev => {
-          if (prev <= 1) {
-            triggerAlarmFeedback();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else if (alarmTimerSeconds === 0 && alarmActive) {
-      setAlarmActive(false);
-    }
-    return () => clearInterval(intervalId);
-  }, [alarmActive, alarmTimerSeconds]);
-
-  const triggerAlarmFeedback = () => {
-    triggerHaptic(300);
-    setTimeout(() => triggerHaptic(300), 500);
-    logger.warn('Triage', 'Alarm Re-Assessment Fired!');
-
-    try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const playBeep = (time: number, freq: number) => {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, time);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        gain.gain.setValueAtTime(0.3, time);
-        osc.start(time);
-        osc.stop(time + 0.18);
-      };
-
-      const now = audioCtx.currentTime;
-      playBeep(now, 523.25);
-      playBeep(now + 0.25, 523.25);
-      playBeep(now + 0.5, 659.25);
-    } catch (e) {
-      console.log('AudioContext alarm error', e);
-    }
-  };
-
-  const startSimulatedAlarm = () => {
-    triggerHaptic(100);
-    setAlarmTimerSeconds(10);
-    setAlarmActive(true);
-    logger.info('Triage', 'Simulated 10-second re-assessment alarm started');
-  };
-
-  const handleToggleLocalEffect = (effect: string) => {
-    setLocalEffects(prev =>
-      prev.includes(effect) ? prev.filter(x => x !== effect) : [...prev, effect]
-    );
-  };
-
-  const handleToggleSystemicEffect = (effect: string) => {
-    setSystemicEffects(prev =>
-      prev.includes(effect) ? prev.filter(x => x !== effect) : [...prev, effect]
-    );
-  };
-
-  const handleAddWoundPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          triggerHaptic(50);
-          const newPhoto = {
-            blob: event.target.result as string,
-            timestamp: Date.now()
-          };
-          setWoundPhotos(prev => [...prev, newPhoto]);
-          logger.info('Triage', 'Wound photograph captured chronologically', { timestamp: newPhoto.timestamp });
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleRemovePhoto = (index: number) => {
-    triggerHaptic(50);
-    setWoundPhotos(prev => prev.filter((_, i) => i !== index));
-    logger.info('Triage', `Wound photograph removed at index ${index}`);
-  };
-
-  const handleSaveAssessment = async () => {
-    triggerHaptic(150);
-
-    let existingLog = await getIncidentLog(incidentId);
-    let species_prediction: IncidentDetails['species_prediction'] = {
-      primary: 'Tidak Teridentifikasi',
-      risk: 'NON-VENOMOUS',
-      confidence: 0,
-      alternatives: []
-    };
-
-    if (existingLog) {
-      species_prediction = existingLog.details.species_prediction;
-    }
-
-    const updatedDetails: IncidentDetails = {
+  async function save(signedIn: boolean) {
+    const details = {
       gps_coordinates: {
-        lat: currentGPS?.lat || -6.2088,
-        lng: currentGPS?.lng || 106.8456,
-        accuracy: currentGPS?.accuracy || 15,
-        timestamp: Date.now()
+        lat: gps?.lat ?? DEFAULT_GPS.lat,
+        lng: gps?.lng ?? DEFAULT_GPS.lng,
+        accuracy: gps?.accuracy ?? DEFAULT_GPS.accuracy,
+        timestamp: Date.now(),
       },
-      species_prediction,
+      species_prediction: {
+        primary: species?.scientific_name ?? 'Not identified',
+        risk: (species?.venom_type ?? 'NON-VENOMOUS') as VenomClass,
+        confidence: 0,
+        alternatives: [],
+      },
       severity_assessment: {
-        grade: severityGrade,
-        grade_history: existingLog
-          ? [...existingLog.details.severity_assessment.grade_history, { timestamp: Date.now(), grade: severityGrade }]
-          : [{ timestamp: Date.now(), grade: severityGrade }],
-        who_protocol: whoProtocol
+        grade,
+        grade_history: [{ timestamp: Date.now(), grade }],
+        who_protocol: [...ALWAYS_DO, ...NEVER_DO],
       },
       symptoms: {
         bite_location: biteLocation,
@@ -260,550 +123,515 @@ export default function Triage({ incidentId, onNavigate }: TriageProps) {
         swelling_grade: swellingGrade,
         local_effects: localEffects,
         systemic_effects: systemicEffects,
-        vital_signs: { hr, bp, spo2 }
-      }
+        vital_signs: { hr, bp, spo2 },
+      },
     };
+    await upsertIncident(incidentId, details, photos.map((p) => p.dataUrl), signedIn ? accountName : null);
+    await refreshPendingSyncCount();
+    setSaved(signedIn);
+    setPendingSave(false);
+  }
 
-    const rawPhotoBlobs = woundPhotos.map(p => p.blob);
-    await addIncidentLog(incidentId, updatedDetails, rawPhotoBlobs);
-    await updatePendingSyncCount();
+  const photoInputId = 'wound-photo-input';
 
-    logger.info('Triage', `Incident triage report successfully encrypted and saved to DB`, {
-      incidentId,
-      severityGrade
-    });
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <button type="button" onClick={onFinished} className="btn btn-tertiary -ml-2 px-2">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          {step === 3 ? 'Finish' : 'Cancel'}
+        </button>
+        <p className="text-[13px] text-ink-muted">
+          No account needed &middot; nothing uploaded
+        </p>
+      </div>
 
-    alert('Rekam Medis Triage disimpan di basis data lokal secara terenkripsi!');
-    onNavigate('home');
-  };
-
-  const stepLabels = ['Konteks', 'Luka Lokal', 'Sistemik', 'Protokol WHO'];
-
-  const severityGradeChip = () => {
-    if (severityGrade >= 3) return <span className="chip chip-neuro">Grade {severityGrade}</span>;
-    if (severityGrade === 2) return <span className="chip chip-hemo">Grade {severityGrade}</span>;
-    return <span className="chip chip-safe">Grade {severityGrade}</span>;
-  };
-
-  const renderLeftColumn = () => {
-    return (
-      <div className="space-y-4">
-        <div className="panel flex items-center justify-between p-3">
-          {stepLabels.map((label, idx) => {
-            const stepNum = idx + 1;
-            const isActive = currentStep === stepNum;
-            const isCompleted = currentStep > stepNum;
+      <nav aria-label="Assessment steps" className="mt-4">
+        <ol className="flex flex-wrap gap-x-1 gap-y-2">
+          {STEPS.map((label, index) => {
+            const active = step === index;
+            const done = step > index;
             return (
-              <button
-                key={idx}
-                onClick={() => {
-                  triggerHaptic(50);
-                  setCurrentStep(stepNum);
-                }}
-                aria-label={`Langkah ${stepNum}: ${label}`}
-                aria-current={isActive ? 'step' : undefined}
-                className="flex flex-1 flex-col items-center py-1.5"
-              >
-                <span
-                  className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs font-bold ${
-                    isActive
-                      ? 'border-transparent bg-[#2E7D6F] text-white'
-                      : isCompleted
-                        ? 'border-transparent bg-[#1E1E1E] text-white'
-                        : 'border-[color:var(--line)] bg-white text-[#5B5B5B]'
+              <li key={label} className="flex flex-1 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setStep(index)}
+                  aria-current={active ? 'step' : undefined}
+                  className={`flex min-h-[44px] flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-semibold transition-colors ${
+                    active ? 'bg-brand-50 text-brand' : done ? 'text-ink' : 'text-ink-muted hover:text-ink'
                   }`}
                 >
-                  {isCompleted ? (
-                    <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                  ) : (
-                    stepNum
-                  )}
-                </span>
-                <span
-                  className={`mt-1 text-[11px] font-bold ${
-                    isActive ? 'text-[#2E7D6F]' : 'text-[#5B5B5B]'
-                  }`}
-                >
-                  {label.split(' ')[0]}
-                </span>
-              </button>
+                  <span
+                    aria-hidden="true"
+                    className={`flex h-5 w-5 flex-none items-center justify-center rounded-full text-[11px] ${
+                      active ? 'bg-brand text-white' : done ? 'bg-ink text-white' : 'bg-surface-secondary text-ink-muted'
+                    }`}
+                  >
+                    {done ? <Check className="h-3 w-3" /> : index + 1}
+                  </span>
+                  <span className="min-w-0 truncate">{label}</span>
+                </button>
+              </li>
             );
           })}
-        </div>
+        </ol>
+      </nav>
 
-        {currentStep === 1 && (
-          <div className="step-transition space-y-4">
-            <div className="panel space-y-4 p-4">
-              <h3 className="border-b border-[color:var(--line)] pb-2 text-sm font-extrabold">
-                1. Lokasi &amp; Waktu Gigitan
-              </h3>
-
-              <div className="space-y-1">
-                <label htmlFor="bite-location" className="block text-xs font-bold text-[#5B5B5B]">
-                  Lokasi anatomi gigitan
+      {step === 0 && (
+        <div className="panel-in mt-6">
+          <SectionTitle
+            as="h1"
+            overline={`Step 1 of 4`}
+            title="When and where was the bite?"
+            lede="This timestamp sets the clock for every observation that follows, and it is what the receiving clinic reads first."
+          />
+          <Card className="mt-6 p-5">
+            <div className="space-y-5">
+              <div>
+                <label htmlFor="bite-location" className="label">
+                  Bite location
                 </label>
-                <input
+                <select
                   id="bite-location"
-                  type="text"
                   value={biteLocation}
-                  onChange={e => setBiteLocation(e.target.value)}
-                  className="field"
-                  placeholder="Contoh: Pergelangan Kaki Kanan"
-                />
+                  onChange={(e) => setBiteLocation(e.target.value)}
+                  className="field mt-1.5"
+                >
+                  {BITE_LOCATIONS.map((location) => (
+                    <option key={location}>{location}</option>
+                  ))}
+                </select>
               </div>
 
-              <div className="space-y-1">
-                <label htmlFor="bite-time" className="block text-xs font-bold text-[#5B5B5B]">
-                  Waktu gigitan ular
+              <div>
+                <label htmlFor="bite-time" className="label">
+                  Time of the bite
                 </label>
                 <input
                   id="bite-time"
                   type="datetime-local"
                   value={biteTime}
-                  onChange={e => setBiteTime(e.target.value)}
-                  className="field"
+                  onChange={(e) => setBiteTime(e.target.value)}
+                  className="field mt-1.5"
                 />
               </div>
 
-              <div className="border border-[color:var(--line)] bg-[#F5F5F5] p-3">
-                <p className="eyebrow">Pembacaan satelit GPS</p>
-                <p className="mt-1.5 flex items-start gap-2 text-sm font-bold text-[#3D3D3D]">
-                  <MapPin className="mt-0.5 h-4 w-4 flex-none text-[#2E7D6F]" aria-hidden="true" />
-                  {currentGPS
-                    ? `${currentGPS.lat.toFixed(5)}, ${currentGPS.lng.toFixed(5)} (Akurasi: ${currentGPS.accuracy}m)`
-                    : 'Menunggu lock koordinat...'}
+              <div className="border-t border-line pt-4">
+                <p className="label">Recorded location</p>
+                <p className="num mt-1.5 text-[13px] leading-relaxed text-ink-secondary">
+                  {gps
+                    ? `${gps.lat.toFixed(4)}, ${gps.lng.toFixed(4)}, accuracy ${gps.accuracy} m`
+                    : 'No satellite fix yet. The assessment can still be completed; the coordinate will be filled in when a fix arrives.'}
                 </p>
               </div>
             </div>
-
-            <button
-              onClick={() => { triggerHaptic(50); setCurrentStep(2); }}
-              className="flex w-full items-center justify-center gap-1 bg-[#1E1E1E] py-3 text-sm font-bold text-white hover:bg-black"
-            >
-              <span>Lanjut ke Luka Lokal</span>
-              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </Card>
+          <div className="mt-5 flex justify-end">
+            <button type="button" onClick={() => setStep(1)} className="btn btn-primary">
+              Next
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {currentStep === 2 && (
-          <div className="step-transition space-y-4">
-            <div className="panel space-y-4 p-4">
-              <h3 className="border-b border-[color:var(--line)] pb-2 text-sm font-extrabold">
-                2. Gejala Fisik Lokal
-              </h3>
+      {step === 1 && (
+        <div className="panel-in mt-6">
+          <SectionTitle as="h1" overline="Step 2 of 4" title="What can you see at the bite site?" />
+          <Card className="mt-6 p-5">
+            <div>
+              <div className="flex items-baseline justify-between gap-3">
+                <label htmlFor="pain" className="label">
+                  Pain, 1 to 10
+                </label>
+                <span className="num text-sm font-semibold text-ink">{painScale}</span>
+              </div>
+              <input
+                id="pain"
+                type="range"
+                min={1}
+                max={10}
+                value={painScale}
+                onChange={(e) => setPainScale(Number(e.target.value))}
+                className="mt-2 w-full accent-brand"
+              />
+              <div className="mt-1 flex justify-between text-[13px] text-ink-muted">
+                <span>No pain</span>
+                <span>Worst pain</span>
+              </div>
+            </div>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="pain-scale" className="text-xs font-bold text-[#5B5B5B]">
-                    Skala Nyeri (VAS 1-10):
+            <fieldset className="mt-6 border-t border-line pt-5">
+              <legend className="label">Swelling</legend>
+              <div className="mt-2 grid grid-cols-5 gap-1.5">
+                {[0, 1, 2, 3, 4].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setSwellingGrade(value)}
+                    aria-pressed={swellingGrade === value}
+                    className={`min-h-[44px] rounded-md border text-sm font-semibold transition-colors ${
+                      swellingGrade === value
+                        ? 'border-brand bg-brand text-white'
+                        : 'border-line-control bg-surface text-ink hover:bg-surface-secondary'
+                    }`}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-[13px] leading-relaxed text-ink-secondary">{SWELLING[swellingGrade]}</p>
+            </fieldset>
+
+            <fieldset className="mt-6 border-t border-line pt-5">
+              <legend className="label">Other local signs</legend>
+              <div className="mt-2 space-y-2">
+                {LOCAL_SYMPTOMS.map((symptom) => (
+                  <label
+                    key={symptom}
+                    className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md border border-line-control px-3 py-2 text-sm hover:bg-surface-secondary"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={localEffects.includes(symptom)}
+                      onChange={() => toggle(localEffects, setLocalEffects, symptom)}
+                      className="h-4 w-4 flex-none accent-brand"
+                    />
+                    <span>{symptom}</span>
                   </label>
-                  <span className="chip chip-neuro">{painScale} / 10</span>
+                ))}
+              </div>
+            </fieldset>
+          </Card>
+          <div className="mt-5 flex justify-between gap-3">
+            <button type="button" onClick={() => setStep(0)} className="btn btn-secondary">
+              Back
+            </button>
+            <button type="button" onClick={() => setStep(2)} className="btn btn-primary">
+              Next
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div className="panel-in mt-6">
+          <SectionTitle
+            as="h1"
+            overline="Step 3 of 4"
+            title="Any signs away from the bite?"
+            lede="Whole-body signs change the grade more than anything else you enter here."
+          />
+          <Card className="mt-6 space-y-5 p-5">
+            <fieldset>
+              <legend className="label">Breathing, movement, swallowing</legend>
+              <div className="mt-2 space-y-2">
+                {NEUROTOXIC_SYMPTOMS.map((symptom) => (
+                  <label
+                    key={symptom}
+                    className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md border border-line-control px-3 py-2 text-sm hover:bg-surface-secondary"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={systemicEffects.includes(symptom)}
+                      onChange={() => toggle(systemicEffects, setSystemicEffects, symptom)}
+                      className="h-4 w-4 flex-none accent-brand"
+                    />
+                    <span>{symptom}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset className="border-t border-line pt-5">
+              <legend className="label">Bleeding and bruising</legend>
+              <div className="mt-2 space-y-2">
+                {HEMOTOXIC_SYMPTOMS.map((symptom) => (
+                  <label
+                    key={symptom}
+                    className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md border border-line-control px-3 py-2 text-sm hover:bg-surface-secondary"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={systemicEffects.includes(symptom)}
+                      onChange={() => toggle(systemicEffects, setSystemicEffects, symptom)}
+                      className="h-4 w-4 flex-none accent-brand"
+                    />
+                    <span>{symptom}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset className="border-t border-line pt-5">
+              <legend className="label">Vital signs, if a reading is available</legend>
+              <p className="mt-1 text-[13px] leading-relaxed text-ink-secondary">
+                Leave these at their defaults if you have no measurement. Guessing is worse than leaving them out.
+              </p>
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                <div>
+                  <label htmlFor="hr" className="label">
+                    Pulse, bpm
+                  </label>
+                  <input id="hr" type="number" value={hr} onChange={(e) => setHr(Number(e.target.value))} className="field mt-1.5 text-center" />
                 </div>
-                <input
-                  id="pain-scale"
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={painScale}
-                  onChange={e => setPainScale(Number(e.target.value))}
-                  className="w-full accent-[#70020F]"
-                />
-                <div className="flex justify-between text-[11px] font-medium text-[#5B5B5B]">
-                  <span>Nir nyeri</span>
-                  <span>Sedang</span>
-                  <span>Hebat</span>
+                <div>
+                  <label htmlFor="bp" className="label">
+                    Blood pressure
+                  </label>
+                  <input id="bp" type="text" value={bp} onChange={(e) => setBp(e.target.value)} className="field mt-1.5 text-center" />
+                </div>
+                <div>
+                  <label htmlFor="spo2" className="label">
+                    SpO2, %
+                  </label>
+                  <input
+                    id="spo2"
+                    type="number"
+                    value={spo2}
+                    onChange={(e) => setSpo2(Number(e.target.value))}
+                    className="field mt-1.5 text-center"
+                  />
                 </div>
               </div>
+              {spo2 < 90 && (
+                <p role="alert" className="mt-3 text-[13px] font-semibold text-danger">
+                  SpO2 below 90% is treated as life threatening regardless of anything else on this form.
+                </p>
+              )}
+            </fieldset>
+          </Card>
+          <div className="mt-5 flex justify-between gap-3">
+            <button type="button" onClick={() => setStep(1)} className="btn btn-secondary">
+              Back
+            </button>
+            <button type="button" onClick={() => setStep(3)} className="btn btn-primary">
+              See the result
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      )}
 
-              <div className="space-y-1.5 pt-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-[#5B5B5B]">Pembengkakan (Swelling):</label>
-                  <span className="chip chip-info">Grade {swellingGrade}</span>
+      {step === 3 && (
+        <div className="panel-in mt-6">
+          <SectionTitle
+            as="h1"
+            overline="Assessment result"
+            title={`Grade ${grade}: ${severity.label}`}
+            lede={severity.summary}
+          />
+
+          <Card className="mt-6 border-l-4 border-l-brand p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={severity.tone}>Grade {grade}</Badge>
+              <Badge tone="neutral">Recheck every {recheckInterval(grade)} minutes</Badge>
+            </div>
+            <p className="mt-3 text-[15px] font-semibold leading-relaxed text-ink">{severity.action}</p>
+          </Card>
+
+          <Card className="mt-5 p-5">
+            <p className="text-[15px] font-semibold text-ink">How this grade was reached</p>
+            <dl className="mt-3 space-y-2 text-[13px] leading-relaxed">
+              {[
+                ['Bite location', biteLocation],
+                ['Time of bite', biteTime ? biteTime.replace('T', ' ') : 'not recorded'],
+                ['Pain reported', `${painScale} out of 10`],
+                ['Swelling', SWELLING[swellingGrade]],
+                ['Local signs', localEffects.length ? localEffects.join(', ') : 'none recorded'],
+                ['Whole-body signs', systemicEffects.length ? systemicEffects.join(', ') : 'none recorded'],
+                ['SpO2', `${spo2}%`],
+              ].map(([term, value]) => (
+                <div key={term} className="grid gap-0.5 border-b border-line pb-2 sm:grid-cols-12 sm:gap-4">
+                  <dt className="font-semibold text-ink sm:col-span-4">{term}</dt>
+                  <dd className="text-ink-secondary sm:col-span-8">{value}</dd>
                 </div>
-                <div className="grid grid-cols-5 gap-1.5" role="radiogroup" aria-label="Grade pembengkakan">
-                  {[0, 1, 2, 3, 4].map(g => (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => { triggerHaptic(50); setSwellingGrade(g); }}
-                      aria-pressed={swellingGrade === g}
-                      className={`py-2 text-xs font-bold ${
-                        swellingGrade === g
-                          ? 'bg-[#2E7D6F] text-white'
-                          : 'border border-[color:var(--line)] bg-white hover:bg-[#F5F5F5]'
-                      }`}
-                    >
-                      G{g}
-                    </button>
-                  ))}
+              ))}
+            </dl>
+          </Card>
+
+          <Card className="mt-5 p-5">
+            <p className="text-[15px] font-semibold text-ink">Handling, in order</p>
+            <ol className="mt-3 space-y-2">
+              {ALWAYS_DO.map((line) => (
+                <li key={line} className="flex items-start gap-2.5 text-sm leading-relaxed text-ink-secondary">
+                  <Check className="mt-0.5 h-4 w-4 flex-none text-success" aria-hidden="true" />
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ol>
+            <div className="mt-4 rounded-md border border-danger/30 bg-danger-bg p-4">
+              <p className="text-sm font-semibold text-danger">Do not do these</p>
+              <ul className="mt-2 space-y-2">
+                {NEVER_DO.map((line) => (
+                  <li key={line} className="flex items-start gap-2.5 text-sm leading-relaxed text-ink">
+                    <Trash2 className="mt-0.5 h-4 w-4 flex-none text-danger" aria-hidden="true" />
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Card>
+
+          {species && (
+            <Card className="mt-5 p-5">
+              <p className="text-[15px] font-semibold text-ink">Species carried into this assessment</p>
+              <div className="mt-3 flex items-center gap-3">
+                <img
+                  src={species.reference_images[0]}
+                  alt={species.scientific_name}
+                  className="h-14 w-20 flex-none rounded-md object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-ink">{species.scientific_name}</p>
+                  <div className="mt-1">
+                    <Badge tone={VENOM[species.venom_type].tone}>{VENOM[species.venom_type].label}</Badge>
+                  </div>
                 </div>
-                <p className="text-xs font-medium leading-relaxed text-[#5B5B5B]">
-                  {swellingGrade === 0 && 'G0: Tidak ada pembengkakan'}
-                  {swellingGrade === 1 && 'G1: Terbatas di daerah sekitar gigitan'}
-                  {swellingGrade === 2 && 'G2: Meluas sampai setengah ekstremitas'}
-                  {swellingGrade === 3 && 'G3: Meluas ke seluruh ekstremitas'}
-                  {swellingGrade === 4 && 'G4: Menjalar melewati ekstremitas ke arah tubuh utama'}
+                <button type="button" onClick={() => onOpenSpecies(species.taxon_id)} className="btn btn-secondary px-3">
+                  Details
+                </button>
+              </div>
+            </Card>
+          )}
+
+          <Card className="mt-5 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-[15px] font-semibold text-ink">Wound record</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-ink-secondary">
+                  Optional. One photograph at each check-in shows the swelling spreading better than any number.
                 </p>
               </div>
-
-              <fieldset className="space-y-1.5 border-t border-[color:var(--line)] pt-3">
-                <legend className="text-xs font-bold text-[#5B5B5B]">Kondisi luka lainnya</legend>
-                {localEffectsChoices.map(eff => (
-                  <label
-                    key={eff}
-                    className={`flex cursor-pointer items-center gap-2.5 border p-2.5 text-xs font-semibold ${
-                      localEffects.includes(eff)
-                        ? 'border-[#1E1E1E] bg-[#1E1E1E]/5'
-                        : 'border-[color:var(--line)] hover:border-[#5B5B5B]'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={localEffects.includes(eff)}
-                      onChange={() => handleToggleLocalEffect(eff)}
-                      className="h-4 w-4 accent-[#2E7D6F]"
-                    />
-                    <span>{eff}</span>
-                  </label>
-                ))}
-              </fieldset>
+              <label htmlFor={photoInputId} className="btn btn-secondary cursor-pointer">
+                <Camera className="h-4 w-4" aria-hidden="true" />
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Add photograph
+              </label>
+              <input id={photoInputId} type="file" accept="image/*" onChange={addPhoto} className="sr-only" />
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => { triggerHaptic(50); setCurrentStep(1); }}
-                className="w-1/3 border border-[color:var(--line)] py-2.5 text-xs font-bold text-[#1E1E1E] hover:bg-[#F5F5F5]"
-              >
-                Kembali
-              </button>
-              <button
-                onClick={() => { triggerHaptic(50); setCurrentStep(3); }}
-                className="flex w-2/3 items-center justify-center gap-1 bg-[#1E1E1E] py-2.5 text-xs font-bold text-white hover:bg-black"
-              >
-                <span>Lanjut ke Sistemik</span>
-                <ChevronRight className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {currentStep === 3 && (
-          <div className="step-transition space-y-4">
-            <div className="panel space-y-4 p-4">
-              <h3 className="border-b border-[color:var(--line)] pb-2 text-sm font-extrabold">
-                3. Gejala Sistemik &amp; Vital
-              </h3>
-
-              <div className="space-y-1.5">
-                <p className="eyebrow text-[#70020F]">Efek neurotoksik (saraf/kelumpuhan)</p>
-                {neurotoxicChoices.map(nt => (
-                  <label
-                    key={nt}
-                    className={`flex cursor-pointer items-center gap-2.5 border p-2.5 text-xs font-semibold ${
-                      systemicEffects.includes(nt)
-                        ? 'border-[#70020F] bg-[#70020F]/5'
-                        : 'border-[color:var(--line)] hover:border-[#5B5B5B]'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={systemicEffects.includes(nt)}
-                      onChange={() => handleToggleSystemicEffect(nt)}
-                      className="h-4 w-4 accent-[#70020F]"
-                    />
-                    <span>{nt}</span>
-                  </label>
-                ))}
-              </div>
-
-              <div className="space-y-1.5 border-t border-[color:var(--line)] pt-3">
-                <p className="eyebrow text-[#8A4B00]">Efek hemotoksik (pendarahan/darah)</p>
-                {hemotoxicChoices.map(ht => (
-                  <label
-                    key={ht}
-                    className={`flex cursor-pointer items-center gap-2.5 border p-2.5 text-xs font-semibold ${
-                      systemicEffects.includes(ht)
-                        ? 'border-[#F57C00] bg-[#F57C00]/10'
-                        : 'border-[color:var(--line)] hover:border-[#5B5B5B]'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={systemicEffects.includes(ht)}
-                      onChange={() => handleToggleSystemicEffect(ht)}
-                      className="h-4 w-4 accent-[#F57C00]"
-                    />
-                    <span>{ht}</span>
-                  </label>
-                ))}
-              </div>
-
-              <fieldset className="space-y-2 border-t border-[color:var(--line)] pt-3">
-                <legend className="eyebrow text-[#2E7D6F]">Tanda vital pasien</legend>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="space-y-1 text-center">
-                    <label htmlFor="vital-hr" className="block text-[11px] font-bold text-[#5B5B5B]">
-                      HR (bpm)
-                    </label>
-                    <input
-                      id="vital-hr"
-                      type="number"
-                      value={hr}
-                      onChange={e => setHr(Number(e.target.value))}
-                      className="field text-center"
-                    />
-                  </div>
-                  <div className="space-y-1 text-center">
-                    <label htmlFor="vital-bp" className="block text-[11px] font-bold text-[#5B5B5B]">
-                      BP (mmHg)
-                    </label>
-                    <input
-                      id="vital-bp"
-                      type="text"
-                      value={bp}
-                      onChange={e => setBp(e.target.value)}
-                      className="field text-center"
-                    />
-                  </div>
-                  <div className="space-y-1 text-center">
-                    <label htmlFor="vital-spo2" className="block text-[11px] font-bold text-[#5B5B5B]">
-                      SpO2 (%)
-                    </label>
-                    <input
-                      id="vital-spo2"
-                      type="number"
-                      value={spo2}
-                      onChange={e => setSpo2(Number(e.target.value))}
-                      className="field text-center"
-                    />
-                  </div>
-                </div>
-              </fieldset>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => { triggerHaptic(50); setCurrentStep(2); }}
-                className="w-1/3 border border-[color:var(--line)] py-2.5 text-xs font-bold text-[#1E1E1E] hover:bg-[#F5F5F5]"
-              >
-                Kembali
-              </button>
-              <button
-                onClick={() => { triggerHaptic(50); setCurrentStep(4); }}
-                className="flex w-2/3 items-center justify-center gap-1 bg-[#1E1E1E] py-2.5 text-xs font-bold text-white hover:bg-black"
-              >
-                <span>Lihat Protokol WHO</span>
-                <ChevronRight className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderRightColumn = () => {
-    return (
-      <div className="space-y-4">
-        <div className="panel overflow-hidden">
-          <div className="flex items-center justify-between border-b border-[color:var(--line)] px-4 py-3">
-            <span className="text-sm font-extrabold">Triage envenomasi</span>
-            {severityGradeChip()}
-          </div>
-
-          <div className="space-y-4 p-4">
-            <div className="flex items-center gap-3 border border-[color:var(--line)] bg-[#F5F5F5] p-3">
-              <span
-                className={`h-3.5 w-3.5 flex-none rounded-full border ${
-                  severityGrade === 4 ? 'bg-[#70020F]' :
-                  severityGrade === 3 ? 'bg-[#70020F]' :
-                  severityGrade === 2 ? 'bg-[#F57C00]' :
-                  severityGrade === 1 ? 'bg-[#388E3C]' : 'bg-[#9E9E9E]'
-                }`}
-                aria-hidden="true"
-              />
-              <div>
-                <h4 className="text-sm font-extrabold leading-none">
-                  {severityGrade === 0 && 'Nir-Envenomasi'}
-                  {severityGrade === 1 && 'Ringan (Mild Local)'}
-                  {severityGrade === 2 && 'Sedang (Moderate Local)'}
-                  {severityGrade === 3 && 'Berat (Severe Systemic)'}
-                  {severityGrade === 4 && 'Mengancam Jiwa (Life Threatening)'}
-                </h4>
-                <p className="mt-1.5 text-xs font-medium text-[#5B5B5B]">Status kritis gigitan ular</p>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <p className="eyebrow">Prosedur penanganan medis (WHO)</p>
-              <ol className="space-y-2">
-                {whoProtocol.map((line, idx) => {
-                  const isWarning = line.includes('Dilarang') || line.includes('CRITICAL') || line.includes('DARURAT') || line.includes('TINDAKAN KRITIS');
-                  return (
-                    <li
-                      key={idx}
-                      className={`border p-2.5 text-xs font-medium leading-relaxed ${
-                        isWarning
-                          ? 'border-[#70020F]/25 bg-[#70020F]/5 text-[#70020F]'
-                          : 'border-[color:var(--line)] text-[#3D3D3D]'
-                      }`}
+            {photos.length === 0 ? (
+              <p className="mt-4 rounded-md bg-surface-secondary px-3 py-4 text-center text-[13px] text-ink-secondary">
+                No photographs yet.
+              </p>
+            ) : (
+              <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {photos.map((photo, index) => (
+                  <li key={photo.at} className="relative overflow-hidden rounded-md border border-line">
+                    <img src={photo.dataUrl} alt={`Wound photograph ${index + 1}`} className="aspect-square w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setPhotos((prev) => prev.filter((_, i) => i !== index))}
+                      className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded-sm bg-danger text-white"
+                      aria-label={`Remove wound photograph ${index + 1}`}
                     >
-                      {line}
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                    <span className="num absolute inset-x-0 bottom-0 bg-ink/85 px-1.5 py-1 text-center text-[11px] font-semibold text-white">
+                      {formatDateTime(photo.at).split(', ')[1]}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
 
-            <div className="flex items-center justify-between border border-[color:var(--line)] p-3">
-              <div className="flex items-center gap-2.5">
-                <Clock className="h-4 w-4 text-[#2E7D6F]" aria-hidden="true" />
-                <div>
-                  <p className="text-xs font-extrabold leading-none">Re-assessment timer</p>
-                  <p className="mt-1 text-[11px] font-medium text-[#5B5B5B]">
-                    Observasi tiap {alarmInterval} menit
+          {/* DESIGN.md 17/18: the result is already on screen. The account prompt
+              sits below it and never blocks it. */}
+          <Card className="mt-5 border-l-4 border-l-brand p-5">
+            <p className="flex items-center gap-2 text-[15px] font-semibold text-ink">
+              <Lock className="h-4 w-4 text-brand" aria-hidden="true" />
+              Save this assessment
+            </p>
+            <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
+              You have the full result either way. An account only keeps this record so you and the receiving
+              clinic can read it again later.
+            </p>
+            <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
+              {saved ? (
+                <>
+                  <p role="status" className="text-sm font-semibold text-success">
+                    Saved to {accountName}. You will find it under History.
                   </p>
-                </div>
-              </div>
-
-              {alarmTimerSeconds > 0 ? (
-                <span className="font-mono text-sm font-extrabold text-[#70020F]">
-                  00:{alarmTimerSeconds.toString().padStart(2, '0')}
-                </span>
+                  <button type="button" onClick={onFinished} className="btn btn-primary">
+                    Done
+                  </button>
+                </>
               ) : (
-                <button
-                  onClick={startSimulatedAlarm}
-                  className="flex items-center gap-1.5 bg-[#2E7D6F] px-2.5 py-1.5 text-xs font-bold text-white hover:bg-[#256a5e]"
-                >
-                  <Volume2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  Beep (10 detik)
-                </button>
+                <>
+                  {accountName ? (
+                    <button type="button" onClick={() => void save(true)} className="btn btn-primary">
+                      Save to {accountName}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setCreatingAccount((open) => !open)}
+                        aria-expanded={creatingAccount}
+                        className="btn btn-primary"
+                      >
+                        Create an account to save
+                      </button>
+                      <button type="button" onClick={() => void save(false)} className="btn btn-secondary">
+                        Continue without saving
+                      </button>
+                    </>
+                  )}
+                </>
               )}
             </div>
-          </div>
-        </div>
 
-        <div className="panel space-y-3 p-4">
-          <div className="flex items-center justify-between border-b border-[color:var(--line)] pb-2">
-            <div className="flex items-center gap-1.5">
-              <Camera className="h-4 w-4 text-[#2E7D6F]" aria-hidden="true" />
-              <span className="text-sm font-extrabold">Histori progresi foto luka</span>
-            </div>
-            <span className="text-[11px] font-medium text-[#5B5B5B]">Pencatatan berkala</span>
-          </div>
-
-          <div className="grid grid-cols-4 gap-2">
-            {woundPhotos.map((photo, index) => {
-              const dateLabel = new Date(photo.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-              return (
-                <div key={index} className="relative aspect-square overflow-hidden border border-[color:var(--line)] bg-[#F0F0F0]">
-                  <img src={photo.blob} alt={`Foto luka ${index + 1}`} className="h-full w-full object-cover" />
-                  <button
-                    onClick={() => handleRemovePhoto(index)}
-                    aria-label={`Hapus foto luka ${index + 1}`}
-                    className="absolute right-0.5 top-0.5 bg-[#70020F] p-1 text-white hover:bg-[#8b0313]"
-                  >
-                    <Trash2 className="h-3 w-3" aria-hidden="true" />
+            {creatingAccount && !accountName && (
+              <form
+                className="panel-in mt-4 border-t border-line pt-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!draftName.trim()) return;
+                  setAccountName(draftName.trim());
+                  setCreatingAccount(false);
+                  setPendingSave(true);
+                }}
+              >
+                <label htmlFor="account-name" className="label">
+                  Account name
+                </label>
+                <div className="mt-1.5 flex flex-col gap-2.5 sm:flex-row">
+                  <input
+                    id="account-name"
+                    value={draftName}
+                    onChange={(e) => setDraftName(e.target.value)}
+                    placeholder="Your name"
+                    className="field sm:max-w-[18rem]"
+                  />
+                  <button type="submit" className="btn btn-primary" disabled={!draftName.trim()}>
+                    Create and save
                   </button>
-                  <span className="absolute inset-x-0 bottom-0 truncate bg-[#1E1E1E]/80 px-1 py-0.5 text-center text-[10px] font-bold text-white">
-                    {dateLabel}
-                  </span>
                 </div>
-              );
-            })}
-
-            <label className="flex aspect-square cursor-pointer flex-col items-center justify-center border border-dashed border-[#5B5B5B] text-center text-[#5B5B5B] hover:border-[#1E1E1E]">
-              <Plus className="h-5 w-5" aria-hidden="true" />
-              <span className="mt-1 text-[11px] font-bold">Ambil Foto</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleAddWoundPhoto}
-                className="hidden"
-              />
-            </label>
-          </div>
-        </div>
-
-        <div className="hidden pt-2 md:flex">
-          <button
-            onClick={handleSaveAssessment}
-            className="flex w-full items-center justify-center gap-1.5 bg-[#2E7D6F] py-3 text-sm font-bold text-white hover:bg-[#256a5e]"
-          >
-            <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-            Simpan Rekam Medis
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="flex min-h-[640px] flex-col bg-white p-4 text-[#1E1E1E] md:p-8">
-      <div className="mb-4 flex items-center justify-between border-b border-[color:var(--line)] pb-3">
-        <button
-          onClick={() => onNavigate('home')}
-          className="border border-[color:var(--line)] px-2.5 py-1.5 text-xs font-bold text-[#5B5B5B] hover:text-[#1E1E1E]"
-        >
-          Beranda
-        </button>
-        <h1 className="text-sm font-extrabold">Triage Klinis WHO</h1>
-        <div className="w-10" aria-hidden="true" />
-      </div>
-
-      <div className="flex flex-1 flex-col justify-start">
-        <div className="flex flex-1 flex-col justify-start md:grid md:grid-cols-12 md:items-start md:gap-8">
-          <div className="flex w-full flex-col justify-start md:col-span-6">
-            {(currentStep < 4 || !window.matchMedia('(min-width: 768px)').matches) ? (
-              renderLeftColumn()
-            ) : (
-              <div className="panel space-y-4 p-6 text-center">
-                <CheckCircle2 className="mx-auto h-8 w-8 text-[#2E7D6F]" aria-hidden="true" />
-                <h3 className="text-sm font-extrabold">Formulir triase selesai</h3>
-                <p className="text-xs font-medium leading-relaxed text-[#5B5B5B]">
-                  Rincian triase pasien dan instruksi darurat WHO ditampilkan di panel sebelah kanan.
-                  Gunakan tombol simpan untuk merekam data secara terenkripsi.
+                <p className="mt-2 text-[13px] leading-relaxed text-ink-secondary">
+                  The name is stored on this device only. Nothing is sent anywhere.
                 </p>
-                <button
-                  onClick={() => { triggerHaptic(50); setCurrentStep(1); }}
-                  className="border border-[color:var(--line)] px-4 py-2 text-xs font-bold text-[#1E1E1E] hover:bg-[#F5F5F5]"
-                >
-                  Ubah data gejala
-                </button>
-              </div>
+              </form>
             )}
-          </div>
 
-          <div className="mt-6 flex w-full flex-col justify-start md:col-span-6 md:mt-0">
-            {(currentStep === 4 || window.matchMedia('(min-width: 768px)').matches) ? (
-              renderRightColumn()
-            ) : (
-              <div className="hidden border border-dashed border-[#5B5B5B]/40 p-8 text-center text-xs font-medium text-[#5B5B5B] md:block">
-                Mengisi kuesioner gejala di sebelah kiri akan menghitung tingkat keparahan triage secara real-time.
+            {pendingSave && accountName && !saved && (
+              <div className="mt-4 border-t border-line pt-4">
+                <button type="button" onClick={() => void save(true)} className="btn btn-primary">
+                  Save this assessment to {accountName}
+                </button>
               </div>
             )}
 
-            {currentStep === 4 && (
-              <div className="mt-4 flex gap-2 md:hidden">
-                <button
-                  onClick={() => { triggerHaptic(50); setCurrentStep(3); }}
-                  className="w-1/3 border border-[color:var(--line)] py-3 text-xs font-bold text-[#1E1E1E] hover:bg-[#F5F5F5]"
-                >
-                  Kembali
-                </button>
-                <button
-                  onClick={handleSaveAssessment}
-                  className="flex w-2/3 items-center justify-center gap-1.5 bg-[#2E7D6F] py-3 text-xs font-bold text-white hover:bg-[#256a5e]"
-                >
-                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                  Simpan Rekam Medis
-                </button>
-              </div>
-            )}
-          </div>
+            </Card>
+
+          <p className="mt-5 text-[13px] leading-relaxed text-ink-secondary">
+            Assessment {incidentId}. Created {formatDateTime(Date.now())}. This tool supports clinical judgement; it
+            does not replace it.
+          </p>
         </div>
-      </div>
+      )}
     </div>
   );
 }

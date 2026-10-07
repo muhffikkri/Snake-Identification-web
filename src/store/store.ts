@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { db } from '../db/db';
 
-interface GPSData {
+export interface GPSData {
   lat: number;
   lng: number;
   accuracy: number;
@@ -9,33 +9,38 @@ interface GPSData {
 }
 
 interface AppState {
-  currentGPS: GPSData | null;
+  gps: GPSData | null;
   networkStatus: 'online' | 'offline';
-  authMode: 'GUEST' | 'SECURE';
+  /** Which product surface the user is looking at. */
+  audience: 'GENERAL' | 'GOVERNMENT';
+  /** DESIGN.md 40: an account saves history. It never gates triage. */
+  accountName: string | null;
   pendingSyncCount: number;
-  
+
   setGPS: (gps: GPSData | null) => void;
   setNetworkStatus: (status: 'online' | 'offline') => void;
-  setAuthMode: (mode: 'GUEST' | 'SECURE') => void;
-  updatePendingSyncCount: () => Promise<void>;
+  setAudience: (audience: AppState['audience']) => void;
+  setAccountName: (name: string | null) => void;
+  refreshPendingSyncCount: () => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  currentGPS: null,
+  gps: null,
   networkStatus: navigator.onLine ? 'online' : 'offline',
-  authMode: 'GUEST',
+  audience: 'GENERAL',
+  accountName: null,
   pendingSyncCount: 0,
 
-  setGPS: (gps) => set({ currentGPS: gps }),
-  setNetworkStatus: (status) => set({ networkStatus: status }),
-  setAuthMode: (mode) => set({ authMode: mode }),
-  
-  updatePendingSyncCount: async () => {
-    try {
-      const count = await db.incidents.where('sync_status').equals('PENDING').count();
-      set({ pendingSyncCount: count });
-    } catch (e) {
-      console.error('Failed to query pending sync count:', e);
-    }
-  }
+  setGPS: (gps) => set({ gps }),
+  setNetworkStatus: (networkStatus) => set({ networkStatus }),
+  setAudience: (audience) => set({ audience }),
+  setAccountName: (accountName) => set({ accountName }),
+
+  refreshPendingSyncCount: async () => {
+    const count = await db.incidents.where('sync_status').equals('PENDING').count();
+    set({ pendingSyncCount: count });
+  },
 }));
+
+/** Fallback coordinate used when the device has no satellite fix yet. */
+export const DEFAULT_GPS: GPSData = { lat: -6.2088, lng: 106.8456, accuracy: 15, timestamp: 0 };

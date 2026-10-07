@@ -1,289 +1,378 @@
+import { ArrowRight, Ban, HelpCircle, ClipboardList, Radio } from 'lucide-react';
+import { Card } from './ui/Primitives';
 
-import { Shield, ArrowRight, HelpCircle, Ban, Activity } from 'lucide-react';
-
-interface LandingPageProps {
-  onStartApp: () => void;
+interface LandingProps {
+  onIdentify: () => void;
+  onTriage: () => void;
 }
 
+/** Kept from the existing copy. WHO burden figures attributed, not invented. */
 const PROBLEMS = [
   {
     icon: HelpCircle,
-    title: 'Salah membaca jenis ular',
-    body: 'Korban dan saksi sulit membedakan ular berbisa dari yang tidak. Akibatnya kepanikan atau meremehkan bahaya klinis.',
+    title: 'Reading the snake wrong',
+    body: 'Bystanders and patients struggle to tell a venomous snake from a harmless one. The result is either panic or an under-reacted bite.',
   },
   {
     icon: Ban,
-    title: 'Pertolongan pertama yang membahayakan',
-    body: 'Tourniquet dilaporkan pada 26-93% kasus. Pemotongan dan torehan tradisional memperparah kerusakan jaringan lokal.',
+    title: 'First aid that causes harm',
+    body: 'Tourniquets and traditional cutting or suction worsen local tissue damage before any trained help arrives.',
   },
   {
-    icon: Activity,
-    title: 'Data pra-rumah sakit yang kosong',
-    body: 'Korban tiba di Puskesmas atau RS tanpa data dasar: spesies, garis waktu pembengkakan, dan tindakan awal yang sudah dilakukan.',
+    icon: ClipboardList,
+    title: 'No record at the clinic door',
+    body: 'Patients reach the health facility without the species, the swelling timeline, or what was already done to the limb.',
   },
 ];
 
 const WORKFLOW = [
-  { num: '01', title: 'Pengumpulan input', items: ['Foto visual ular', 'Kondisi bekas gigitan', 'Koordinat GPS satelit'] },
-  { num: '02', title: 'Pemrosesan Edge-AI', items: ['Prediksi taksa ular', 'Kalkulasi parameter WHO', 'Penyaringan area distribusi'] },
-  { num: '03', title: 'Keluaran real-time', items: ['Probabilitas & jenis bisa', 'Panduan imobilisasi elastis', 'Alarm monitoring ulang'] },
-  { num: '04', title: 'Pemantauan berkelanjutan', items: ['Uji progresi berkala', 'Linimasa foto luka', 'Kalkulasi ulang grade'] },
-  { num: '05', title: 'Serah terima klinis', items: ['Laporan digital pra-RS', 'Enkripsi data asinkron', 'Ringkasan rujukan'] },
+  {
+    num: '01',
+    title: 'Capture',
+    body: 'Photograph the snake with the camera or pick an image from the device.',
+  },
+  {
+    num: '02',
+    title: 'Identify',
+    body: 'The model runs on the device, filters candidates against your location, and reports a ranked list.',
+  },
+  {
+    num: '03',
+    title: 'Assess',
+    body: 'Answer short questions about the bite, the limb, and any whole-body symptoms.',
+  },
+  {
+    num: '04',
+    title: 'Understand',
+    body: 'Read the risk grade, the reasoning behind it, and the handling steps that follow.',
+  },
+  {
+    num: '05',
+    title: 'Monitor',
+    body: 'Log the wound over time and keep the record for the clinic handover.',
+  },
 ];
 
-const REFERRAL_NETWORK = [
+const DEVELOPMENT_PLAN = [
+  {
+    phase: 'Research',
+    body: 'Field interviews with patients and health workers, and a review of WHO handling guidance for snakebite.',
+  },
+  {
+    phase: 'Prototype',
+    body: 'An offline-first build that runs identification and triage on a low-resource Android device.',
+  },
+  {
+    phase: 'AI development',
+    body: 'Detection, image embedding, and the location filter that narrows candidates to species recorded nearby.',
+  },
+  {
+    phase: 'Clinical evaluation',
+    body: 'Structured review of assessment output by clinical advisors before any wider use.',
+  },
+  {
+    phase: 'Pilot deployment',
+    body: 'Deployment in high-risk districts with a local health service partner.',
+  },
+  {
+    phase: 'Scaling',
+    body: 'Extension to further provinces and integration with national surveillance reporting.',
+  },
+];
+
+const TEAM = [
+  { name: 'Haidar Ali Laudza', field: 'Informatics', role: 'Project lead, AI engineering' },
+  { name: 'Julius Tegar Aji Putra', field: 'Informatics', role: 'AI engineering, mobile application' },
+  { name: 'Muhammad Fikri', field: 'Informatics', role: 'Backend, systems integration' },
+  { name: 'Cahya Mutiara Sandi', field: 'Nursing', role: 'Clinical advisor, domain expert' },
+  { name: 'Elizabet Febriani', field: 'Nursing', role: 'Clinical advisor, domain expert' },
+];
+
+const COLLABORATORS = [
   { name: 'Universitas Diponegoro', note: 'Semarang, Indonesia' },
-  { name: 'Harvard T.H. Chan', note: 'School of Public Health' },
+  { name: 'Harvard T.H. Chan School of Public Health', note: 'School of Public Health' },
   { name: 'Health Systems Innovation Lab', note: 'Harvard University' },
-  { name: 'AISX - AI for Smart-X', note: 'Kolaborasi riset' },
-  { name: 'PATH', note: 'Kesehatan global' },
+  { name: 'AI for Smart-X', note: 'Research collaboration' },
+  { name: 'PATH', note: 'Global health' },
 ];
 
-export default function LandingPage({ onStartApp }: LandingPageProps) {
-  const teamMembers = [
-    { name: 'Haidar Ali Laudza', background: 'Informatika', role: 'Project Leader, AI Engineer' },
-    { name: 'Julius Tegar Aji Putra', background: 'Informatika', role: 'AI Engineer, Mobile App Developer' },
-    { name: 'Muhammad Fikri', background: 'Informatika', role: 'Backend Developer, System Integrator' },
-    { name: 'Cahya Mutiara Sandi', background: 'Ilmu Keperawatan', role: 'Clinical Advisor & Domain Expert' },
-    { name: 'Elizabet Febriani', background: 'Ilmu Keperawatan', role: 'Clinical Advisor & Domain Expert' },
-  ];
+function initials(name: string) {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join('');
+}
 
-  const developmentTimeline = [
-    { quarter: 'Q1', phase: 'Fondasi', milestones: 'Selesaikan aplikasi inti & AI. Siapkan sistem peringatan darurat.', kpis: 'Aplikasi berjalan luring. Perizinan medis diajukan.' },
-    { quarter: 'Q2', phase: 'Uji awal', milestones: 'Uji di 2 wilayah risiko tinggi. Amankan mitra NGO pertama.', kpis: 'Akurasi AI >90%. 50+ pasien terbantu.' },
-    { quarter: 'Q3', phase: 'Kemitraan pemerintah', milestones: 'Lacak pemulihan pasien. Libatkan dinas kesehatan setempat.', kpis: 'Perjanjian resmi ditandatangani. 100+ pasien terbantu.' },
-    { quarter: 'Q4', phase: 'Dampak terukur', milestones: 'Perluas ke 200 kasus. Mulai kemitraan rumah sakit.', kpis: 'Diagnosis 20% lebih cepat. Pencocokan SABU akurat.' },
-  ];
-
+export default function Landing({ onIdentify, onTriage }: LandingProps) {
   return (
-    <div className="bg-[#FAFAFA] text-[#1E1E1E]">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 border-b border-[color:var(--line)] bg-[#FAFAFA]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
-          <a href="#top" className="flex items-center gap-2.5" aria-label="SHIELD: SnakeBiteAI, kembali ke atas">
-            <span className="flex h-8 w-8 items-center justify-center bg-[#1E1E1E]">
-              <Shield className="h-4 w-4 text-[#F5F5F5]" aria-hidden="true" />
-            </span>
-            <span className="flex flex-col leading-none">
-              <span className="text-sm font-extrabold tracking-tight">SHIELD: SnakeBiteAI</span>
-              <span className="mt-0.5 text-[10px] font-semibold text-[#5B5B5B]">Bandung Hub, Indonesia</span>
-            </span>
+    <div className="bg-canvas">
+      <nav
+        aria-label="Sections"
+        className="sticky top-0 z-50 border-b border-line bg-surface/95 backdrop-blur-sm"
+      >
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <a href="#top" className="flex min-h-[44px] items-center gap-2.5" aria-label="SnakeBiteAI, back to top">
+            <img src="/Logo_1.webp" alt="" aria-hidden="true" className="h-7 w-7 object-contain" />
+            <span className="text-[15px] font-semibold tracking-tight">SnakeBiteAI</span>
           </a>
 
-          <div className="hidden items-center gap-7 text-sm font-semibold text-[#5B5B5B] md:flex">
-            <a href="#masalah" className="hover:text-[#1E1E1E]">Masalah</a>
-            <a href="#alur" className="hover:text-[#1E1E1E]">Alur lapangan</a>
-            <a href="#rencana" className="hover:text-[#1E1E1E]">Kesiapan klinis</a>
-            <a href="#tim" className="hover:text-[#1E1E1E]">Tim</a>
+          <div className="hidden items-center gap-6 lg:flex">
+            <a
+              className="flex min-h-[44px] items-center text-sm font-medium text-ink-secondary hover:text-ink"
+              href="#problem"
+            >
+              The problem
+            </a>
+            <a
+              className="flex min-h-[44px] items-center text-sm font-medium text-ink-secondary hover:text-ink"
+              href="#workflow"
+            >
+              How it works
+            </a>
+            <a
+              className="flex min-h-[44px] items-center text-sm font-medium text-ink-secondary hover:text-ink"
+              href="#plan"
+            >
+              Development plan
+            </a>
+            <a
+              className="flex min-h-[44px] min-w-[52px] items-center justify-center px-1.5 text-sm font-medium text-ink-secondary hover:text-ink"
+              href="#team"
+            >
+              Team
+            </a>
           </div>
 
-          <button
-            onClick={onStartApp}
-            className="bg-[#1E1E1E] px-4 py-2 text-sm font-bold text-white hover:bg-black"
-          >
-            Mulai identifikasi
+          <button type="button" onClick={onTriage} className="btn btn-primary shrink-0 px-4 py-2 text-[13px]">
+            Start triage
           </button>
         </div>
       </nav>
 
-      {/* Hero */}
-      <header id="top" className="mx-auto max-w-6xl px-5 pb-16 pt-12 md:grid md:grid-cols-12 md:gap-14 md:pb-24 md:pt-20">
-        <div className="md:col-span-7">
-          <p className="eyebrow">Alat bantu keputusan klinis luring</p>
-          <h1 className="mt-4 text-4xl font-extrabold leading-[1.05] tracking-tight md:text-5xl">
-            Menit menentukan.
-            <br />
-            <span className="text-[#70020F]">SnakeBiteAI</span> memberi kejelasan.
-          </h1>
-          <p className="mt-6 max-w-xl text-base font-medium leading-relaxed text-[#5B5B5B]">
-            Menjembatani celah pra-rumah sakit pada penanganan gigitan ular: identifikasi taksa visual,
-            pertolongan pertama berbasis bukti klinis, dan serah terima data pasien yang terstruktur dalam satu alur kerja luring.
-          </p>
+      <header id="top" className="mx-auto max-w-6xl px-4 pb-14 pt-10 sm:px-6 sm:pb-20 sm:pt-14">
+        <div className="md:grid md:grid-cols-12 md:items-center md:gap-12">
+          <div className="md:col-span-7">
+            <p className="overline">SnakeBiteAI</p>
+            <h1 className="mt-3 text-[34px] font-bold leading-[1.1] tracking-tight text-ink sm:text-5xl lg:text-[56px]">
+              When minutes matter,
+              <br />
+              SnakeBiteAI delivers clarity.
+            </h1>
+            <p className="mt-5 max-w-xl text-[17px] leading-relaxed text-ink-secondary">
+              AI-assisted snake identification, triage assessment, and geographic insight. Everything below runs
+              on the device, so it keeps working with no connection.
+            </p>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <button
-              onClick={onStartApp}
-              className="inline-flex items-center justify-center gap-2 bg-[#2E7D6F] px-6 py-3 text-sm font-bold text-white hover:bg-[#256a5e]"
-            >
-              Mulai identifikasi
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </button>
-            <a
-              href="#alur"
-              className="inline-flex items-center justify-center border border-[#1E1E1E] px-6 py-3 text-sm font-bold text-[#1E1E1E] hover:bg-[#1E1E1E] hover:text-white"
-            >
-              Lihat cara kerja
-            </a>
-          </div>
-        </div>
-
-        {/* Reference specimen card */}
-        <div className="mt-12 md:col-span-5 md:mt-0">
-          <figure className="border border-[color:var(--line)] bg-white">
-            <div className="flex items-center justify-between border-b border-[color:var(--line)] px-4 py-2.5">
-              <span className="text-xs font-bold text-[#5B5B5B]">Contoh citra rujukan lokal</span>
-              <span className="chip chip-neuro">Neurotoksik</span>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <button type="button" onClick={onIdentify} className="btn btn-primary">
+                Identify a Snake
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </button>
+              <button type="button" onClick={onTriage} className="btn btn-secondary">
+                Start Triage Assessment
+              </button>
             </div>
+            <p className="mt-3 text-[13px] text-ink-muted">
+              No account needed to start an assessment. Signing in only saves your history.
+            </p>
+          </div>
+
+          {/* Reference specimen from the on-device dataset. A real photograph is
+              evidence that the feature exists; an illustration would not be. */}
+          <figure className="card mt-10 overflow-hidden md:col-span-5 md:mt-0">
             <img
               src="/dataset/Acanthophis_laevis_obs121339246_photo205315764.jpg"
-              alt="Ular Acanthophis laevis (Ular Kematian Papua) dari dataset rujukan luring"
-              className="h-56 w-full object-cover"
+              alt="Acanthophis laevis, the smooth-scaled death adder, one of the reference photographs held on the device"
+              className="h-52 w-full object-cover sm:h-60"
+              loading="eager"
             />
-            <figcaption className="px-4 py-3">
-              <p className="text-sm font-extrabold">Acanthophis laevis</p>
-              <p className="mt-0.5 text-xs font-medium text-[#5B5B5B]">
-                Ular Kematian Papua &middot; contoh satu dari matriks taksa yang tersimpan di perangkat.
+            <figcaption className="border-t border-line px-4 py-3.5">
+              <p className="text-[15px] font-semibold text-ink">Acanthophis laevis</p>
+              <p className="mt-0.5 text-[13px] leading-snug text-ink-secondary">
+                Smooth-scaled death adder. One entry in the reference set stored on the device.
               </p>
             </figcaption>
           </figure>
         </div>
       </header>
 
-      {/* Problem */}
-      <section id="masalah" className="border-y border-[color:var(--line)] bg-white px-5 py-16 md:py-24">
-        <div className="mx-auto max-w-5xl">
-          <p className="eyebrow text-[#70020F]">Masalah</p>
-          <h2 className="mt-3 max-w-2xl text-2xl font-extrabold tracking-tight md:text-3xl">
-            Celah kritis pada penanganan gigitan ular sebelum pasien mencapai rumah sakit
+      <section id="problem" className="border-y border-line bg-surface">
+        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
+          <p className="overline text-brand">The problem</p>
+          <h2 className="mt-2.5 max-w-2xl text-[28px] font-semibold leading-tight tracking-tight text-ink sm:text-[32px]">
+            Snakebite stays time-sensitive long before a patient reaches hospital.
           </h2>
-          <p className="mt-4 max-w-3xl text-sm font-medium leading-relaxed text-[#5B5B5B]">
-            Envenomasi gigitan ular adalah penyakit tropis terabaikan yang ditetapkan WHO, menyebabkan{' '}
-            <span className="font-bold text-[#1E1E1E]">81.000-138.000 kematian</span> dan{' '}
-            <span className="font-bold text-[#1E1E1E]">hingga 400.000 disabilitas setiap tahun</span>,
-            utamanya menjangkau populasi pedesaan di Indonesia.
+          <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-ink-secondary">
+            WHO classifies snakebite envenoming as a neglected tropical disease. It causes an estimated 81,000 to
+            138,000 deaths a year, with up to 400,000 people left permanently disabled. Most of those are in rural
+            populations far from a clinic that can help.
           </p>
 
-          <div className="mt-10 border-t border-[color:var(--line)]">
-            {PROBLEMS.map((p, i) => (
+          <div className="mt-10 border-t border-line">
+            {PROBLEMS.map((problem, index) => (
               <div
-                key={p.title}
-                className="grid gap-4 border-b border-[color:var(--line)] py-6 md:grid-cols-12 md:gap-8"
+                key={problem.title}
+                className="grid gap-2 border-b border-line py-5 sm:grid-cols-12 sm:gap-8"
               >
-                <div className="flex items-center gap-3 md:col-span-4">
-                  <span className="font-mono text-sm font-bold text-[#5B5B5B]">{String(i + 1).padStart(2, '0')}</span>
-                  <p.icon className="h-5 w-5 text-[#70020F]" aria-hidden="true" />
-                  <h3 className="text-base font-extrabold">{p.title}</h3>
+                <div className="flex items-start gap-3 sm:col-span-4">
+                  <span className="num mt-0.5 flex-none text-[13px] font-semibold text-ink-muted">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <problem.icon className="mt-0.5 h-5 w-5 flex-none text-brand" aria-hidden="true" />
+                  <h3 className="text-[15px] font-semibold leading-snug text-ink">{problem.title}</h3>
                 </div>
-                <p className="text-sm font-medium leading-relaxed text-[#5B5B5B] md:col-span-8">{p.body}</p>
+                <p className="text-sm leading-relaxed text-ink-secondary sm:col-span-8">{problem.body}</p>
               </div>
             ))}
           </div>
 
-          <div className="mt-10 flex flex-col items-start gap-6 border border-[color:var(--line)] bg-[#F5F5F5] p-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="eyebrow text-[#70020F]">Indonesia, episentrum krisis</p>
-              <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-[#3D3D3D]">
-                Estimasi <span className="font-bold text-[#1E1E1E]">135.000 kasus gigitan</span> dan{' '}
-                <span className="font-bold text-[#1E1E1E]">10.547 kematian per tahun</span>. Indonesia mencakup{' '}
-                <span className="font-bold text-[#70020F]">sekitar 97% kematian gigitan ular di ASEAN</span>.
-              </p>
+          <Card className="mt-10 p-5 sm:p-6">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="overline text-brand">Indonesia</p>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-secondary">
+                  Indonesia records an estimated 135,000 snakebite cases and 10,547 deaths each year, which is
+                  roughly 97% of snakebite deaths across ASEAN.
+                </p>
+              </div>
+              <p className="num shrink-0 text-5xl font-bold leading-none text-brand">97%</p>
             </div>
-            <p className="font-mono text-4xl font-extrabold text-[#70020F]">97%</p>
-          </div>
+          </Card>
         </div>
       </section>
 
-      {/* Field workflow */}
-      <section id="alur" className="mx-auto max-w-6xl px-5 py-16 md:py-24">
-        <p className="eyebrow text-[#2E7D6F]">Alur lapangan</p>
-        <h2 className="mt-3 text-2xl font-extrabold tracking-tight md:text-3xl">Cara kerja di titik kejadian</h2>
-        <p className="mt-4 max-w-xl text-sm font-medium leading-relaxed text-[#5B5B5B]">
-          Lima langkah, seluruhnya dapat dijalankan tanpa koneksi internet.
-        </p>
+      <section id="workflow" className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
+        <p className="overline text-brand">Product workflow</p>
+        <h2 className="mt-2.5 max-w-2xl text-[28px] font-semibold leading-tight tracking-tight text-ink sm:text-[32px]">
+          Five steps, none of which need a network.
+        </h2>
 
-        <div className="mt-10 border-t border-[color:var(--line)]">
+        {/* A connected chain rather than five identical cards: each step names
+            what it does, and the connector shows the order. */}
+        <ol className="mt-10 grid gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-2 lg:grid-cols-5">
           {WORKFLOW.map((step) => (
-            <div key={step.num} className="grid gap-3 border-b border-[color:var(--line)] py-5 md:grid-cols-12 md:items-start md:gap-8">
-              <div className="flex items-baseline gap-4 md:col-span-4">
-                <span className="font-mono text-sm font-bold text-[#2E7D6F]">{step.num}</span>
-                <h3 className="text-base font-extrabold">{step.title}</h3>
-              </div>
-              <ul className="flex flex-wrap gap-x-6 gap-y-1.5 md:col-span-8">
-                {step.items.map((it) => (
-                  <li key={it} className="flex items-center gap-2 text-sm font-medium text-[#5B5B5B]">
-                    <span className="h-1 w-1 flex-none bg-[#5B5B5B]" aria-hidden="true" />
-                    {it}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <li key={step.num} className="bg-surface px-4 py-5">
+              <p className="num text-[13px] font-semibold text-brand">{step.num}</p>
+              <h3 className="mt-2 text-[15px] font-semibold text-ink">{step.title}</h3>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-ink-secondary">{step.body}</p>
+            </li>
           ))}
-        </div>
+        </ol>
       </section>
 
-      {/* Clinical readiness plan */}
-      <section id="rencana" className="border-y border-[color:var(--line)] bg-white px-5 py-16 md:py-24">
-        <div className="mx-auto max-w-5xl">
-          <p className="eyebrow text-[#2E7D6F]">Rencana pengembangan</p>
-          <h2 className="mt-3 text-2xl font-extrabold tracking-tight md:text-3xl">Kesiapan klinis 12 bulan</h2>
-
-          <div className="mt-10 border-t border-[color:var(--line)]">
-            {developmentTimeline.map((item) => (
-              <div key={item.quarter} className="grid gap-4 border-b border-[color:var(--line)] py-6 md:grid-cols-12 md:items-start md:gap-8">
-                <div className="flex items-baseline gap-3 md:col-span-3">
-                  <span className="font-mono text-lg font-extrabold text-[#2E7D6F]">{item.quarter}</span>
-                  <span className="text-sm font-bold">{item.phase}</span>
-                </div>
-                <div className="md:col-span-5">
-                  <p className="text-xs font-bold text-[#5B5B5B]">Milestone</p>
-                  <p className="mt-1 text-sm font-medium leading-relaxed text-[#3D3D3D]">{item.milestones}</p>
-                </div>
-                <div className="md:col-span-4">
-                  <p className="text-xs font-bold text-[#5B5B5B]">Indikator</p>
-                  <p className="mt-1 text-sm font-medium leading-relaxed text-[#3D3D3D]">{item.kpis}</p>
-                </div>
-              </div>
-            ))}
+      <section id="plan" className="border-y border-line bg-surface">
+        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
+          <div className="max-w-2xl">
+            <p className="overline text-brand">Development plan</p>
+            <h2 className="mt-2.5 text-[28px] font-semibold leading-tight tracking-tight text-ink sm:text-[32px]">
+              From field research to national scale
+            </h2>
           </div>
+
+          <ol className="mt-10">
+            {DEVELOPMENT_PLAN.map((item, index) => (
+              <li key={item.phase} className="grid gap-1.5 border-t border-line py-5 sm:grid-cols-12 sm:gap-8">
+                <div className="flex items-baseline gap-3 sm:col-span-4">
+                  <span className="num text-[13px] font-semibold text-ink-muted">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <h3 className="text-[15px] font-semibold text-ink">{item.phase}</h3>
+                </div>
+                <p className="text-sm leading-relaxed text-ink-secondary sm:col-span-8">{item.body}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
-      {/* Team */}
-      <section id="tim" className="mx-auto max-w-5xl px-5 py-16 md:py-24">
-        <p className="eyebrow text-[#2E7D6F]">Tim</p>
-        <h2 className="mt-3 text-2xl font-extrabold tracking-tight md:text-3xl">Lintas disiplin sejak awal</h2>
-        <p className="mt-4 max-w-xl text-sm font-medium leading-relaxed text-[#5B5B5B]">
-          Informatika dan ilmu keperawatan klinis bekerja bersama pada satu alur kerja.
-        </p>
+      <section id="team" className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
+        <div className="max-w-2xl">
+          <p className="overline text-brand">Team</p>
+          <h2 className="mt-2.5 text-[28px] font-semibold leading-tight tracking-tight text-ink sm:text-[32px]">
+            Informatics and nursing, working on one workflow
+          </h2>
+        </div>
 
-        <div className="mt-10 border-t border-[color:var(--line)]">
-          {teamMembers.map((member) => (
-            <div key={member.name} className="flex flex-col gap-1 border-b border-[color:var(--line)] py-4 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-baseline gap-3">
-                <p className="text-base font-bold">{member.name}</p>
-                <p className="text-sm font-medium text-[#5B5B5B]">{member.background}</p>
+        {/* No portrait photography is available, so each member is marked by a
+            monogram rather than an invented face. */}
+        <ul className="mt-10 divide-y divide-line border-y border-line">
+          {TEAM.map((member) => (
+            <li key={member.name} className="flex items-center gap-4 py-4">
+              <span
+                aria-hidden="true"
+                className="flex h-10 w-10 flex-none items-center justify-center rounded-md bg-surface-secondary text-[13px] font-semibold text-ink-secondary"
+              >
+                {initials(member.name)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-semibold text-ink">{member.name}</p>
+                <p className="text-[13px] text-ink-muted">{member.field}</p>
               </div>
-              <p className="text-sm font-semibold text-[#2E7D6F]">{member.role}</p>
-            </div>
+              <p className="hidden max-w-[16rem] text-right text-[13px] leading-snug text-ink-secondary sm:block">
+                {member.role}
+              </p>
+              <p className="text-[13px] text-ink-secondary sm:hidden">{member.role}</p>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
 
-      {/* Referral network (acknowledgements, not endorsements) */}
-      <section id="mitra" className="border-t border-[color:var(--line)] bg-white px-5 py-14">
-        <div className="mx-auto max-w-6xl">
-          <p className="eyebrow">Jejaring rujukan & dukungan akademik</p>
-          <div className="mt-6 flex flex-wrap gap-x-10 gap-y-5">
-            {REFERRAL_NETWORK.map((org) => (
-              <div key={org.name}>
-                <p className="text-sm font-extrabold">{org.name}</p>
-                <p className="mt-0.5 text-xs font-medium text-[#5B5B5B]">{org.note}</p>
-              </div>
+      <section id="collaborators" className="border-t border-line bg-surface">
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14">
+          <p className="overline">Global health system and academic collaborators</p>
+          <ul className="mt-6 flex flex-wrap gap-x-10 gap-y-4">
+            {COLLABORATORS.map((org) => (
+              <li key={org.name}>
+                <p className="text-sm font-semibold text-ink">{org.name}</p>
+                <p className="mt-0.5 text-[13px] text-ink-muted">{org.note}</p>
+              </li>
             ))}
-          </div>
-          <p className="mt-8 max-w-3xl text-xs font-medium leading-relaxed text-[#5B5B5B]">
-            Nama lembaga dicantumkan sebagai bagian dari jejaring dukungan, referensi, dan pembelajaran tim
-            pada HSIL Hackathon 2026 Bandung Hub. Pencantuman ini bukan pernyataan kemitraan resmi maupun endorsement.
+          </ul>
+          <p className="mt-8 max-w-3xl text-[13px] leading-relaxed text-ink-secondary">
+            These organisations are named as part of the team&apos;s support and reference network from the HSIL
+            Hackathon 2026 in Bandung. Listing them here is not a statement of formal partnership or endorsement.
           </p>
         </div>
       </section>
 
-      <footer className="border-t border-[color:var(--line)] bg-white px-5 py-10">
-        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 text-sm font-medium text-[#5B5B5B] md:flex-row md:items-center">
-          <p>&copy; 2026 SHIELD: SnakeBiteAI.</p>
-          <div className="flex gap-6">
-            <button className="hover:text-[#1E1E1E]">Kebijakan privasi</button>
-            <button className="hover:text-[#1E1E1E]">Ketentuan layanan</button>
+      <footer className="on-dark border-t border-brand-800 bg-brand-900 text-white">
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:flex-row sm:items-start sm:justify-between sm:px-6">
+          <div className="max-w-md">
+            <p className="text-[15px] font-semibold">SnakeBiteAI</p>
+            <p className="mt-2 text-[13px] leading-relaxed text-brand-200">
+              An assistive tool. It does not replace clinical judgement, and identification results are never a
+              certainty. When in doubt, treat the bite as an emergency.
+            </p>
+          </div>
+          <div className="flex flex-col">
+            <p className="overline text-brand-300">In this build</p>
+            <button
+              type="button"
+              onClick={onIdentify}
+              className="flex min-h-[44px] items-center text-left text-[13px] font-medium text-white hover:underline"
+            >
+              Identify a Snake
+            </button>
+            <button
+              type="button"
+              onClick={onTriage}
+              className="flex min-h-[44px] items-center text-left text-[13px] font-medium text-white hover:underline"
+            >
+              Start Triage Assessment
+            </button>
+            <button
+              type="button"
+              onClick={onIdentify}
+              className="flex min-h-[44px] items-center text-left text-[13px] font-medium text-white hover:underline"
+            >
+              Snakes near you
+            </button>
+          </div>
+        </div>
+        <div className="border-t border-brand-800">
+          <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6">
+            <p className="text-[13px] text-brand-200">SnakeBiteAI research prototype, 2026.</p>
           </div>
         </div>
       </footer>

@@ -1,18 +1,18 @@
 {
-  "name": "SHIELD: SnakeBiteAI v2",
+  "name": "SnakeBiteAI",
   "short_name": "SnakeBiteAI",
-  "description": "Deep Geospatial-Visual Fusion PWA for Offline-First Snakebite Clinical Decision Support System",
+  "description": "AI-assisted snake identification, triage assessment, and geographic insight. Works offline.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F5F5F5",
-  "theme_color": "#1E1E1E",
+  "background_color": "#F7F8FA",
+  "theme_color": "#70020F",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/logo.svg",
-      "type": "image/svg+xml",
+      "src": "/Logo_1.webp",
+      "type": "image/webp",
       "sizes": "any",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
