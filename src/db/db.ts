@@ -188,21 +188,20 @@ export async function addIncidentLog(
   await db.incidents.add(record);
 }
 
+async function decryptRecord(rec: IncidentRecord): Promise<{ details: IncidentDetails; photos: string[] }> {
+  const details: IncidentDetails = JSON.parse(await decryptData(rec.encrypted_data));
+  let photos: string[] = [];
+  if (rec.encrypted_photos) {
+    photos = JSON.parse(await decryptData(rec.encrypted_photos));
+  }
+  return { details, photos };
+}
+
 // Retrieve and decrypt a single incident log
 export async function getIncidentLog(incidentId: string): Promise<{ details: IncidentDetails; photos: string[] } | null> {
   const record = await db.incidents.get(incidentId);
   if (!record) return null;
-
-  const decryptedDetails = await decryptData(record.encrypted_data);
-  const details: IncidentDetails = JSON.parse(decryptedDetails);
-
-  let photos: string[] = [];
-  if (record.encrypted_photos) {
-    const decryptedPhotos = await decryptData(record.encrypted_photos);
-    photos = JSON.parse(decryptedPhotos);
-  }
-
-  return { details, photos };
+  return decryptRecord(record);
 }
 
 // Get all incidents (with decrypted details)
@@ -212,15 +211,7 @@ export async function getAllDecryptedIncidents(): Promise<Array<{ incident_id: s
   
   for (const rec of records) {
     try {
-      const decryptedDetails = await decryptData(rec.encrypted_data);
-      const details: IncidentDetails = JSON.parse(decryptedDetails);
-      
-      let photos: string[] = [];
-      if (rec.encrypted_photos) {
-        const decryptedPhotos = await decryptData(rec.encrypted_photos);
-        photos = JSON.parse(decryptedPhotos);
-      }
-      
+      const { details, photos } = await decryptRecord(rec);
       results.push({
         incident_id: rec.incident_id,
         timestamp: rec.timestamp,

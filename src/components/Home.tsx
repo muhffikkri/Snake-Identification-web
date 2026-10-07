@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '../store/store';
 import { db, addIncidentLog, type IncidentDetails } from '../db/db';
 import { Radio, RefreshCw } from 'lucide-react';
@@ -19,9 +19,7 @@ function venomChip(venom: string) {
 export default function Home({ onNavigate, onSetIncidentId }: HomeProps) {
   const {
     currentGPS,
-    networkStatus,
     setGPS,
-    pendingSyncCount,
     updatePendingSyncCount
   } = useAppStore();
 

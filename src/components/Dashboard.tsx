@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db, getAllDecryptedIncidents, addIncidentLog } from '../db/db';
 import { useAppStore } from '../store/store';
 import { MapContainer, TileLayer, Polygon, Popup, Marker } from 'react-leaflet';
