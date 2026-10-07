@@ -1,6 +1,22 @@
-# AI Agent Instructions - SHIELD: SnakeBiteAI v2
+# AI Agent Instructions - SnakeBiteAI
 
-You are an expert mHealth and Edge-AI system developer agent. Your goal is to construct the "SHIELD: SnakeBiteAI v2" Progressive Web Application (PWA) exactly according to the strict constraints, architecture schemas, and core specifications defined below.
+> **Read this first.** The visual and copy direction for this project lives in
+> `DESIGN.md`. It supersedes sections 2 and 3 of this file, which were written
+> before the redesign. The owner resolved three collisions on 2026-10-07:
+>
+> 1. **Copy language:** English, per `DESIGN.md`. The Indonesian labels in
+>    section 2 no longer apply.
+> 2. **Palette:** the `DESIGN.md` neutrals with `#70020F` as the single accent.
+>    `#F5F5F5`, `#1E1E1E`, `#2E7D6F` and `#5A9A8F` from section 2 are retired.
+>    Tokens live in `src/index.css`.
+> 3. **Emergency control:** no infinite pulsing glow. `DESIGN.md` 46 rules out
+>    continuous animation, so the emergency button is a static danger treatment
+>    with a 200 ms hover transition.
+>
+> Sections 1 and 4 below still hold: mobile-first, offline-first, Layered-MVVM,
+> and the four page flows.
+
+You are an expert mHealth and Edge-AI system developer agent. Your goal is to construct the SnakeBiteAI Progressive Web Application (PWA) exactly according to the strict constraints, architecture schemas, and core specifications defined below.
 
 ## 1. Core Technical Constraints
 - Approach: Mobile-First & Offline-First Native.
