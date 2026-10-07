@@ -10,7 +10,19 @@ All notable changes to this project are recorded here. The format follows
 
 ### Added
 
-- **Real client-side routing** on React Router 6. `/login`, `/register`,
+- **Vercel deployment.** `vercel.json` pins the build command, the output
+  directory and `npm ci`, and routes every client route to the shell. Pushes to
+  `main` deploy to production, pull requests get a preview.
+- **GitHub Actions workflow** that verifies before it deploys: type check, tests,
+  build, and a routing check. A deploy job depends on it, so a failing test
+  never reaches production.
+- **`tools/serve-dist.mjs`**, which serves `dist/` with the same
+  filesystem-then-shell order Vercel uses, so the deployed routing shape can be
+  exercised locally without a Vercel account.
+- **`tools/vercel-rewrite-check.mjs`**, which asserts that every file in `dist/`
+  is served as itself, every app route falls through to the shell, and the
+  service worker headers allow updates to land.
+- **Client-side routing** on React Router 6. `/login`, `/register`,
   `/triage`, `/identify`, `/discover`, `/species/:id`, `/activity`, `/history`,
   `/account` and `/government` are all addressable, so a refresh or a shared
   link lands on the right screen.
@@ -40,9 +52,15 @@ All notable changes to this project are recorded here. The format follows
 
 ### Fixed
 
+- **`npm install` failed to resolve, so the build broke on any fresh clone.**
+  `@vitejs/plugin-react@4.7.0` declares a peer range ending at vite 7 while the
+  project runs vite 8. Upgraded to `@vitejs/plugin-react@5.2.0`, which supports
+  vite 8 with the same API, instead of forcing the conflict away with
+  `--legacy-peer-deps`. Output is byte-identical.
 - **Deep links 404'd after routing was introduced.** `vite.config.ts` now sets
-  `appType: "spa"` so `vite preview` falls back to the shell; the service worker
-  already returned the cached shell for navigations, so offline deep links work.
+  `appType: "spa"`, and `vercel.json` carries the equivalent rewrite for
+  production; the service worker already returned the cached shell for
+  navigations, so offline deep links work.
 - **Switching to a government account left the user stranded** on the account
   page with no navigation, because the role change removed the app nav without
   moving them. It now routes to the view that applies.

@@ -95,14 +95,60 @@ Accessibility is verified rather than asserted: 44 px minimum targets, a visible
 
 ---
 
+## Deploying to Vercel
+
+Pushes to `main` deploy to production automatically. Pull requests get a preview
+deployment so a reviewer can open the change without a local build.
+
+### One-time setup
+
+1. Import the repository at [vercel.com/new](https://vercel.com/new). The
+   framework preset is Vite; `vercel.json` already pins the build command and the
+   output directory, so the defaults do not need changing.
+2. Create a token: Vercel dashboard, Account Settings, Tokens, Create. Give it
+   the **Deployments** write scope for the project.
+3. Add three repository secrets under Settings, Secrets and variables, Actions:
+
+   | Secret | Where to get it |
+   |---|---|
+   | `VERCEL_TOKEN` | The token from step 2 |
+   | `VERCEL_ORG_ID` | `vercel link` writes it into `.vercel/project.json`, or the project Settings, General |
+   | `VERCEL_PROJECT_ID` | Same place as the org id |
+
+4. Push to `main`. `.github/workflows/deploy.yml` runs the verify job first
+   (type check, tests, build, routing check) and only deploys if it passes.
+
+Locally, `npm run build` plus `node tools/serve-dist.mjs` serves `dist/` the way
+Vercel does, so the routing can be exercised without deploying:
+
+```bash
+npm run build
+node tools/serve-dist.mjs 4180
+node tools/click-through.mjs http://localhost:4180 390
+```
+
+### Why the rewrite rule matters
+
+The app uses client-side routing, so `/triage`, `/register` and `/species/0` are
+not files. Vercel resolves the filesystem before applying rewrites, so a single
+rule sending everything to `index.html` cannot shadow a real asset.
+`node tools/vercel-rewrite-check.mjs` asserts exactly that: every file in
+`dist/` is served as itself, and every app route falls through to the shell.
+
+The same shell fallback is already in `public/sw.js`, which is why deep links
+also resolve with the network blocked.
+
+---
+
 ## Verification
 
 Three harnesses drive the built app in headless Chrome over CDP. Start `npm run preview` first; the preview port is printed on startup.
 
 ```bash
-node tools/click-through.mjs http://localhost:4174 390   # per-viewport click-through
-node tools/contrast-audit.mjs  http://localhost:4174      # computed contrast across 4 screens
-node tools/offline-check.mjs   http://localhost:4174      # reload with the network blocked
+node tools/click-through.mjs http://localhost:4173 390   # per-viewport click-through
+node tools/contrast-audit.mjs  http://localhost:4173      # computed contrast across 4 screens
+node tools/offline-check.mjs   http://localhost:4173      # reload with the network blocked
+node tools/vercel-rewrite-check.mjs                       # routing and cache headers
 ```
 
 `click-through.mjs` takes a width and a height, so it can be run at each breakpoint. Current results: 65 assertions passing at 360, 390, 768, 1024, 1280 and 1440 px with zero console errors, 222 text nodes passing AA, and the full triage and identification flows completing with the network disabled. Deep links resolve both online and offline.

@@ -44,11 +44,13 @@ build/
 
 # Local tools and Node.js binary files
 tools/*
-# The three verification harnesses are part of the documented workflow, so they
-# are tracked even though the rest of tools/ is scratch.
+# The verification and deployment harnesses are part of the documented
+# workflow, so they are tracked even though the rest of tools/ is scratch.
 !tools/click-through.mjs
 !tools/contrast-audit.mjs
 !tools/offline-check.mjs
+!tools/serve-dist.mjs
+!tools/vercel-rewrite-check.mjs
 .gemini/
 antigravity-ide/
 
