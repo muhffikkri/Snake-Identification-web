@@ -64,7 +64,7 @@ describe('Home', () => {
   });
 
   it('navigates to triage without requiring an account', () => {
-    useAppStore.setState({ accountName: null });
+    useAppStore.setState({ account: null });
     renderHome();
 
     screen.getByRole('button', { name: /start triage assessment/i }).click();

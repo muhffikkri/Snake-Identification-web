@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Camera, Check, Lock, Plus, Trash2 } from 'lucide-react';
-import { upsertIncident, type SeverityGrade, type SnakeSpecies, type VenomClass } from '../db/db';
-import { useAppStore, DEFAULT_GPS } from '../store/store';
+import { type SeverityGrade, type SnakeSpecies } from '../db/db';
+import { useAppStore } from '../store/store';
 import {
   ALWAYS_DO,
   HEMOTOXIC_SYMPTOMS,
@@ -14,6 +15,7 @@ import {
   gradeFromSymptoms,
   recheckInterval,
 } from '../lib/clinical';
+import { buildDraft, commitDraft } from '../lib/assessment';
 import { Badge, Card, SectionTitle } from './ui/Primitives';
 import { newIncidentId } from '../lib/data';
 
@@ -22,6 +24,7 @@ interface TriageProps {
   imageDataUrl: string | null;
   onOpenSpecies: (taxonId: number) => void;
   onFinished: () => void;
+  onCleared: () => void;
 }
 
 const STEPS = ['Bite details', 'Local signs', 'Whole-body signs', 'Result'] as const;
@@ -43,8 +46,9 @@ const BITE_LOCATIONS = [
   'Neck or head',
 ];
 
-export default function Triage({ species, imageDataUrl, onOpenSpecies, onFinished }: TriageProps) {
-  const { gps, accountName, setAccountName, refreshPendingSyncCount } = useAppStore();
+export default function Triage({ species, imageDataUrl, onOpenSpecies, onFinished, onCleared }: TriageProps) {
+  const navigate = useNavigate();
+  const { gps, account, setPendingAssessment, refreshPendingSyncCount } = useAppStore();
 
   const [step, setStep] = useState(0);
   const [incidentId, setIncidentId] = useState<string>('');
@@ -59,16 +63,26 @@ export default function Triage({ species, imageDataUrl, onOpenSpecies, onFinishe
   const [bp, setBp] = useState('120/80');
   const [spo2, setSpo2] = useState(98);
   const [photos, setPhotos] = useState<Array<{ dataUrl: string; at: number }>>([]);
-  const [creatingAccount, setCreatingAccount] = useState(false);
-  const [draftName, setDraftName] = useState('');
-  const [pendingSave, setPendingSave] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [skipped, setSkipped] = useState(false);
 
   const grade = useMemo<SeverityGrade>(
     () => gradeFromSymptoms({ swellingGrade, painScale, localEffects, systemicEffects, spo2 }),
     [painScale, swellingGrade, localEffects, systemicEffects, spo2],
   );
   const severity = SEVERITY[grade];
+
+  /**
+   * Signed out, leaving the assessment returns to the landing page; signed in,
+   * it returns to the user's own activity. There is no third destination,
+   * because the assessment was reached from one of those two places.
+   */
+  const exitTo = account ? '/activity' : '/';
+
+  function leave() {
+    onCleared();
+    navigate(exitTo);
+  }
 
   useEffect(() => {
     setIncidentId(newIncidentId());
@@ -98,38 +112,44 @@ export default function Triage({ species, imageDataUrl, onOpenSpecies, onFinishe
     reader.readAsDataURL(file);
   }
 
-  async function save(signedIn: boolean) {
-    const details = {
-      gps_coordinates: {
-        lat: gps?.lat ?? DEFAULT_GPS.lat,
-        lng: gps?.lng ?? DEFAULT_GPS.lng,
-        accuracy: gps?.accuracy ?? DEFAULT_GPS.accuracy,
-        timestamp: Date.now(),
-      },
-      species_prediction: {
-        primary: species?.scientific_name ?? 'Not identified',
-        risk: (species?.venom_type ?? 'NON-VENOMOUS') as VenomClass,
-        confidence: 0,
-        alternatives: [],
-      },
-      severity_assessment: {
-        grade,
-        grade_history: [{ timestamp: Date.now(), grade }],
-        who_protocol: [...ALWAYS_DO, ...NEVER_DO],
-      },
-      symptoms: {
-        bite_location: biteLocation,
-        pain_scale: painScale,
-        swelling_grade: swellingGrade,
-        local_effects: localEffects,
-        systemic_effects: systemicEffects,
-        vital_signs: { hr, bp, spo2 },
-      },
-    };
-    await upsertIncident(incidentId, details, photos.map((p) => p.dataUrl), signedIn ? accountName : null);
+  function currentDraft() {
+    return buildDraft({
+      incidentId,
+      species,
+      photo: photos[0]?.dataUrl ?? imageDataUrl,
+      biteLocation,
+      biteTime,
+      painScale,
+      swellingGrade,
+      localEffects,
+      systemicEffects,
+      hr,
+      bp,
+      spo2,
+      grade,
+      whoProtocol: [...ALWAYS_DO, ...NEVER_DO],
+      gps,
+    });
+  }
+
+  /** Signed in: write straight to the account. */
+  async function saveToAccount() {
+    await commitDraft(currentDraft(), account!.name);
     await refreshPendingSyncCount();
-    setSaved(signedIn);
-    setPendingSave(false);
+    setSaved(true);
+  }
+
+  /** Signed out: carry the draft to register, which writes it once the account exists. */
+  function sendToRegister() {
+    setPendingAssessment(currentDraft());
+    navigate('/register');
+  }
+
+  /** Signed out and declining to save: write anonymously, then offer where to go. */
+  async function continueWithoutSaving() {
+    await commitDraft(currentDraft(), null);
+    await refreshPendingSyncCount();
+    setSkipped(true);
   }
 
   const photoInputId = 'wound-photo-input';
@@ -137,12 +157,12 @@ export default function Triage({ species, imageDataUrl, onOpenSpecies, onFinishe
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <button type="button" onClick={onFinished} className="btn btn-tertiary -ml-2 px-2">
+        <button type="button" onClick={leave} className="btn btn-tertiary -ml-2 px-2">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           {step === 3 ? 'Finish' : 'Cancel'}
         </button>
         <p className="text-[13px] text-ink-muted">
-          No account needed &middot; nothing uploaded
+          {account ? `Signed in as ${account.name}` : 'No account needed'} &middot; nothing uploaded
         </p>
       </div>
 
@@ -549,82 +569,62 @@ export default function Triage({ species, imageDataUrl, onOpenSpecies, onFinishe
               You have the full result either way. An account only keeps this record so you and the receiving
               clinic can read it again later.
             </p>
+
             <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
-              {saved ? (
+{saved ? (
                 <>
-                  <p role="status" className="text-sm font-semibold text-success">
-                    Saved to {accountName}. You will find it under History.
+                  <p role="status" className="flex-1 text-sm font-semibold text-success">
+                    Saved to {account?.name}. You will find it under History.
                   </p>
-                  <button type="button" onClick={onFinished} className="btn btn-primary">
+                  <button type="button" onClick={leave} className="btn btn-primary">
                     Done
+                  </button>
+                </>
+              ) : skipped ? (
+                <p role="status" className="flex-1 text-sm font-semibold text-ink-secondary">
+                  {account
+                    ? `Recorded without an owner, so it will not appear in ${account.name}'s history.`
+                    : 'Recorded without an owner, so it will not appear in your history.'}
+                </p>
+              ) : account ? (
+                <>
+                  <button type="button" onClick={() => void saveToAccount()} className="btn btn-primary">
+                    Save to {account.name}
+                  </button>
+                  <button type="button" onClick={() => void continueWithoutSaving()} className="btn btn-secondary">
+                    Continue without saving
                   </button>
                 </>
               ) : (
                 <>
-                  {accountName ? (
-                    <button type="button" onClick={() => void save(true)} className="btn btn-primary">
-                      Save to {accountName}
-                    </button>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setCreatingAccount((open) => !open)}
-                        aria-expanded={creatingAccount}
-                        className="btn btn-primary"
-                      >
-                        Create an account to save
-                      </button>
-                      <button type="button" onClick={() => void save(false)} className="btn btn-secondary">
-                        Continue without saving
-                      </button>
-                    </>
-                  )}
+                  <button type="button" onClick={sendToRegister} className="btn btn-primary">
+                    Create an account to save
+                  </button>
+                  <button type="button" onClick={() => void continueWithoutSaving()} className="btn btn-secondary">
+                    Continue without saving
+                  </button>
                 </>
               )}
             </div>
 
-            {creatingAccount && !accountName && (
-              <form
-                className="panel-in mt-4 border-t border-line pt-4"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  if (!draftName.trim()) return;
-                  setAccountName(draftName.trim());
-                  setCreatingAccount(false);
-                  setPendingSave(true);
-                }}
-              >
-                <label htmlFor="account-name" className="label">
-                  Account name
-                </label>
-                <div className="mt-1.5 flex flex-col gap-2.5 sm:flex-row">
-                  <input
-                    id="account-name"
-                    value={draftName}
-                    onChange={(e) => setDraftName(e.target.value)}
-                    placeholder="Your name"
-                    className="field sm:max-w-[18rem]"
-                  />
-                  <button type="submit" className="btn btn-primary" disabled={!draftName.trim()}>
-                    Create and save
+            {/* Declining to save still leaves somewhere useful to go. */}
+            {skipped && (
+              <div className="panel-in mt-4 border-t border-line pt-4">
+                <p className="text-[13px] font-semibold text-ink">Where to next</p>
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                  <button type="button" onClick={leave} className="btn btn-secondary">
+                    Back to the landing page
+                  </button>
+                  <button type="button" onClick={() => navigate('/discover')} className="btn btn-secondary">
+                    Browse the snake map
+                  </button>
+                  <button type="button" onClick={() => navigate('/identify')} className="btn btn-secondary">
+                    Photograph the snake
                   </button>
                 </div>
-                <p className="mt-2 text-[13px] leading-relaxed text-ink-secondary">
-                  The name is stored on this device only. Nothing is sent anywhere.
-                </p>
-              </form>
-            )}
-
-            {pendingSave && accountName && !saved && (
-              <div className="mt-4 border-t border-line pt-4">
-                <button type="button" onClick={() => void save(true)} className="btn btn-primary">
-                  Save this assessment to {accountName}
-                </button>
               </div>
             )}
-
-            </Card>
+          </Card>
 
           <p className="mt-5 text-[13px] leading-relaxed text-ink-secondary">
             Assessment {incidentId}. Created {formatDateTime(Date.now())}. This tool supports clinical judgement; it

@@ -14,9 +14,9 @@ Built by the **Kenapa Mendadak Banget Sih** team for **HSIL Hackathon 2026, Band
 
 **Identification without a network.** Photograph a snake or pick one from the on-device reference set. The pipeline runs locally and returns a ranked list with a confidence figure, never a certainty. The page states plainly that this is a suggestion, not a diagnosis, and lists the visual features the model matched so a user can disagree with it.
 
-**Triage without an account.** Four short questions about the bite produce a grade from 0 to 4, the reasoning behind it, and the handling steps to follow. Tourniquets are banned on the result screen in every case. The full result is on screen before any account prompt appears; signing up only adds history.
+**Triage without an account.** Four short questions about the bite produce a grade from 0 to 4, the reasoning behind it, and the handling steps to follow. Tourniquets are banned on the result screen in every case. The full result is on screen before any account prompt appears.
 
-**Emergency start.** One action records a worst-case assessment at the current coordinate so the incident exists even if the form is never finished.
+**One account, three ways in.** The landing page navigation offers only Sign in and Register; the app navigation appears once you are signed in. Both account pages carry a secondary control for a government account, which opens the surveillance view. An assessment finished while signed out can be handed to the register page, which writes it to your history the moment the account exists.
 
 **Geographic discovery.** Species recorded for your region, with a species page that discloses identification, distribution, habitat, and venom detail in sections rather than as a wall of text.
 
@@ -31,7 +31,7 @@ Requires Node.js 18 or newer.
 ```bash
 npm install
 npm run dev          # http://localhost:5174
-npm test             # 42 tests across 5 files
+npm test             # 57 tests across 6 files
 npm run build        # production build into dist/
 npm run preview      # serve the built app
 ```
@@ -39,19 +39,38 @@ npm run preview      # serve the built app
 ---
 
 ## Architecture
-
 | Layer | Choice | Role |
 |---|---|---|
 | View | React 18 + TypeScript + Tailwind CSS 4 | Components and responsive layout |
-| ViewModel | Zustand | GPS, network status, audience, account, sync queue |
+| Routing | React Router 6 | Real URLs, so a refresh on `/triage` lands on the assessment |
+| ViewModel | Zustand | GPS, network status, account and role, held assessment, sync queue |
 | Model | Dexie.js over IndexedDB | Species reference set and encrypted incident records |
 | Services | Web Crypto API | AES-256-GCM encryption at rest, PBKDF2 key derivation |
 | Offline | Service worker | Shell, hashed bundle, and reference images cached on first visit |
 
-Navigation is a state value rather than a router (`src/lib/navigation.ts`); the app has no route table because it has no URLs to deep-link.
+Routing brings one deployment requirement: unknown paths must serve the shell.
+`vite.config.ts` sets `appType: "spa"` so `vite preview` does the fallback, and
+`default.conf` already had `try_files $uri $uri/ /index.html` for the nginx
+container. A server without either will 404 on a refreshed deep link.
 
-Clinical rules live in `src/lib/clinical.ts` and are covered by unit tests: the grading ladder, the recheck intervals, and the tourniquet ban.
+Clinical rules live in `src/lib/clinical.ts` and are covered by unit tests: the
+grading ladder, the recheck intervals, and the tourniquet ban. The assessment
+draft that crosses the register page is built in `src/lib/assessment.ts`.
 
+### Navigation model
+
+| Route | Reachability |
+|---|---|
+| `/` | Always. Carries its own navigation, no shell header |
+| `/login`, `/register` | Always |
+| `/triage` | Always, from the hero |
+| `/identify`, `/discover`, `/species/:id` | Always, by URL and from the post-assessment options |
+| `/activity`, `/history`, `/account` | Signed in |
+| `/government` | Government account |
+
+The app navigation bar shows only for a signed-in general user. The pages behind
+it stay reachable by URL while signed out, because the assessment result offers
+the snake map and the camera as next steps.
 ---
 
 ## Design system
@@ -86,7 +105,7 @@ node tools/contrast-audit.mjs  http://localhost:4174      # computed contrast ac
 node tools/offline-check.mjs   http://localhost:4174      # reload with the network blocked
 ```
 
-`click-through.mjs` takes a width and a height, so it can be run at each breakpoint. Current results: 38 assertions passing at 360, 390, 768, 1024, 1280 and 1440 px with zero console errors, 264 text nodes passing AA, and the full triage and identification flows completing with the network disabled.
+`click-through.mjs` takes a width and a height, so it can be run at each breakpoint. Current results: 65 assertions passing at 360, 390, 768, 1024, 1280 and 1440 px with zero console errors, 222 text nodes passing AA, and the full triage and identification flows completing with the network disabled. Deep links resolve both online and offline.
 
 ---
 

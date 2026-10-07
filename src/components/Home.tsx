@@ -5,15 +5,14 @@ import { useAppStore, DEFAULT_GPS } from '../store/store';
 import { VENOM } from '../lib/clinical';
 import { REGIONS, nearestRegion, regionAt } from '../lib/regions';
 import { useSpecies } from '../lib/data';
-import type { Navigate } from '../lib/navigation';
 import { Badge, Card, SectionTitle } from './ui/Primitives';
 
 interface HomeProps {
-  onNavigate: Navigate;
+  onNavigate: (page: 'identify' | 'triage' | 'discover' | 'activity') => void;
 }
 
 export default function Home({ onNavigate }: HomeProps) {
-  const { gps, networkStatus, accountName } = useAppStore();
+  const { gps, networkStatus, account } = useAppStore();
   const { data: species, loading } = useSpecies();
   const [starting, setStarting] = useState(false);
   const [woundPhoto, setWoundPhoto] = useState<string | null>(null);
@@ -66,7 +65,7 @@ export default function Home({ onNavigate }: HomeProps) {
         vital_signs: { hr: 0, bp: '', spo2: 0 },
       },
     };
-    await upsertIncident(incidentId, details, woundPhoto ? [woundPhoto] : [], accountName);
+    await upsertIncident(incidentId, details, woundPhoto ? [woundPhoto] : [], account?.name ?? null);
     onNavigate('triage');
   }
 
@@ -87,7 +86,7 @@ export default function Home({ onNavigate }: HomeProps) {
       if (record) onNavigate('triage');
       return;
     }
-    onNavigate('dashboard');
+    onNavigate('activity');
   }
 
   return (

@@ -44,8 +44,8 @@ export function useIncidents() {
 }
 
 /** Incident count for the signed-in account. Anonymous records are excluded. */
-export function ownedIncidents(incidents: DecryptedIncident[], accountName: string | null) {
-  return accountName ? incidents.filter((i) => i.owner === accountName) : [];
+export function ownedIncidents(incidents: DecryptedIncident[], owner: string | null) {
+  return owner ? incidents.filter((i) => i.owner === owner) : [];
 }
 
 export function newIncidentId(): string {

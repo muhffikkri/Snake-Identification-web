@@ -1,31 +1,62 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Triage from '../components/Triage';
 import { useAppStore } from '../store/store';
+import { commitDraft } from '../lib/assessment';
 
-vi.mock('../db/db', () => ({
-  db: {
-    incidents: {
-      where: vi.fn().mockReturnValue({
-        equals: vi.fn().mockReturnValue({ count: vi.fn().mockResolvedValue(0) }),
-      }),
+vi.mock('../db/db', async () => {
+  const actual = await vi.importActual<typeof import('../db/db')>('../db/db');
+  return {
+    ...actual,
+    db: {
+      incidents: {
+        where: vi.fn().mockReturnValue({
+          equals: vi.fn().mockReturnValue({ count: vi.fn().mockResolvedValue(0) }),
+        }),
+      },
     },
-  },
-  upsertIncident: vi.fn().mockResolvedValue(undefined),
-  markAllSynced: vi.fn().mockResolvedValue(undefined),
-}));
+  };
+});
 
+vi.mock('../lib/assessment', async () => {
+  const actual = await vi.importActual<typeof import('../lib/assessment')>('../lib/assessment');
+  return { ...actual, commitDraft: vi.fn().mockResolvedValue(undefined) };
+});
+
+const mockCleared = vi.fn();
 const mockFinished = vi.fn();
 const mockOpenSpecies = vi.fn();
 
+function LocationProbe({ onChange }: { onChange: (path: string) => void }) {
+  const location = useLocation();
+  onChange(location.pathname);
+  return null;
+}
+
 function renderTriage() {
-  return render(
-    <Triage species={null} imageDataUrl={null} onOpenSpecies={mockOpenSpecies} onFinished={mockFinished} />,
+  let current = '';
+  const result = render(
+    <MemoryRouter initialEntries={['/triage']}>
+      <LocationProbe onChange={(p) => (current = p)} />
+      <Triage
+        species={null}
+        imageDataUrl={null}
+        onOpenSpecies={mockOpenSpecies}
+        onFinished={mockFinished}
+        onCleared={mockCleared}
+      />
+    </MemoryRouter>,
   );
+  return { path: () => current, ...result };
 }
 
 function goToStep(label: RegExp) {
   fireEvent.click(screen.getByRole('button', { name: label }));
+}
+
+async function reachResult() {
+  goToStep(/step 1 of 4|result/i);
 }
 
 describe('Triage', () => {
@@ -33,7 +64,8 @@ describe('Triage', () => {
     vi.clearAllMocks();
     useAppStore.setState({
       gps: { lat: -6.2088, lng: 106.8456, accuracy: 15, timestamp: 1 },
-      accountName: null,
+      account: null,
+      pendingAssessment: null,
     });
   });
 
@@ -47,19 +79,13 @@ describe('Triage', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /Grade 0: No envenoming/i })).toBeInTheDocument();
     });
-    // No sign-in wall anywhere on the path to the result.
-    expect(screen.queryByRole('button', { name: /sign in/i })).not.toBeInTheDocument();
     expect(screen.getByText(/No account needed/i)).toBeInTheDocument();
   });
 
   it('bans the tourniquet on the result screen', async () => {
     renderTriage();
-
-    goToStep(/step 4 of 4|result/i);
-
-    await waitFor(() => {
-      expect(screen.getByText(/never apply a tourniquet/i)).toBeInTheDocument();
-    });
+    await reachResult();
+    await waitFor(() => expect(screen.getByText(/never apply a tourniquet/i)).toBeInTheDocument());
   });
 
   it('grades breathing difficulty as life threatening', async () => {
@@ -81,45 +107,82 @@ describe('Triage', () => {
     goToStep(/whole-body signs/i);
     fireEvent.change(screen.getByLabelText(/SpO2/i), { target: { value: '85' } });
 
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(/below 90/i);
-    });
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/below 90/i));
   });
 
-  it('shows the result before asking for an account', async () => {
-    renderTriage();
+  it('sends the finished assessment to register instead of blocking on a form', async () => {
+    const { path } = renderTriage();
+    await reachResult();
 
-    goToStep(/step 4 of 4|result/i);
-
-    const gradeHeading = await screen.findByRole('heading', { name: /Grade 0/i });
-    const accountPrompt = screen.getByRole('button', { name: /create an account to save/i });
-
-    // DESIGN.md 18: the prompt must not obstruct the result.
-    expect(gradeHeading.compareDocumentPosition(accountPrompt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  it('creates an account inline and offers to save', async () => {
-    renderTriage();
-
-    goToStep(/step 4 of 4|result/i);
     fireEvent.click(screen.getByRole('button', { name: /create an account to save/i }));
 
-    const input = await screen.findByLabelText(/account name/i);
-    fireEvent.change(input, { target: { value: 'Rina' } });
-    fireEvent.click(screen.getByRole('button', { name: /create and save/i }));
-
-    expect(useAppStore.getState().accountName).toBe('Rina');
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save this assessment to Rina/i })).toBeInTheDocument();
-    });
+    await waitFor(() => expect(path()).toBe('/register'));
+    const draft = useAppStore.getState().pendingAssessment as { incidentId: string; details: unknown };
+    expect(draft).toBeTruthy();
+    expect(draft.incidentId).toBeTruthy();
+    expect((draft.details as { severity_assessment: { grade: number } }).severity_assessment.grade).toBe(0);
+    // Nothing is written until an account exists.
+    expect(commitDraft).not.toHaveBeenCalled();
   });
 
-  it('lets the user continue without saving', async () => {
+  it('offers three destinations after continuing without saving', async () => {
     renderTriage();
+    await reachResult();
 
-    goToStep(/step 4 of 4|result/i);
-    fireEvent.click(await screen.findByRole('button', { name: /continue without saving/i }));
+    fireEvent.click(screen.getByRole('button', { name: /continue without saving/i }));
 
-    expect(useAppStore.getState().accountName).toBeNull();
+    await waitFor(() => expect(screen.getByText(/where to next/i)).toBeInTheDocument());
+    expect(commitDraft).toHaveBeenCalledWith(expect.anything(), null);
+    expect(screen.getByRole('button', { name: /back to the landing page/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /browse the snake map/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /photograph the snake/i })).toBeInTheDocument();
+  });
+
+  it('sends the landing option back to the root path when signed out', async () => {
+    const { path } = renderTriage();
+    await reachResult();
+
+    fireEvent.click(screen.getByRole('button', { name: /continue without saving/i }));
+    await waitFor(() => expect(screen.getByText(/where to next/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /back to the landing page/i }));
+
+    await waitFor(() => expect(path()).toBe('/'));
+    expect(mockCleared).toHaveBeenCalled();
+  });
+
+  it('sends the landing option to activity when signed in', async () => {
+    useAppStore.setState({ account: { name: 'Rina', role: 'USER' } });
+    const { path } = renderTriage();
+    await reachResult();
+
+    fireEvent.click(screen.getByRole('button', { name: /continue without saving/i }));
+    await waitFor(() => expect(screen.getByText(/where to next/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /back to the landing page/i }));
+
+    await waitFor(() => expect(path()).toBe('/activity'));
+  });
+
+  it('returns to the landing page on cancel while signed out', async () => {
+    const { path } = renderTriage();
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    await waitFor(() => expect(path()).toBe('/'));
+  });
+
+  it('returns to activity on cancel while signed in', async () => {
+    useAppStore.setState({ account: { name: 'Rina', role: 'USER' } });
+    const { path } = renderTriage();
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    await waitFor(() => expect(path()).toBe('/activity'));
+  });
+
+  it('saves straight to the account when already signed in', async () => {
+    useAppStore.setState({ account: { name: 'Rina', role: 'USER' } });
+    renderTriage();
+    await reachResult();
+
+    fireEvent.click(screen.getByRole('button', { name: /save to Rina/i }));
+
+    await waitFor(() => expect(commitDraft).toHaveBeenCalledWith(expect.anything(), 'Rina'));
+    expect(await screen.findByText(/saved to Rina/i)).toBeInTheDocument();
   });
 });

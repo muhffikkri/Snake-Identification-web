@@ -6,6 +6,49 @@ All notable changes to this project are recorded here. The format follows
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Real client-side routing** on React Router 6. `/login`, `/register`,
+  `/triage`, `/identify`, `/discover`, `/species/:id`, `/activity`, `/history`,
+  `/account` and `/government` are all addressable, so a refresh or a shared
+  link lands on the right screen.
+- **Account pages** with a government-account control. Signing in as an agency
+  account opens the surveillance view; the account page can switch between the
+  two roles without signing out.
+- **Held assessment across registration.** Finishing triage while signed out and
+  choosing "Create an account to save" routes to the register page with the
+  draft in the store, which writes it to the new account's history on submit.
+- **Where-to-next panel.** Declining to save an assessment now offers the landing
+  page, the snake map, and the camera.
+- **Unknown-route page** with a real destination, replacing the browser's own
+  error.
+
+### Changed
+
+- **The landing page carries its own navigation** with the section links and
+  Sign in plus Register. The shell header, the account control and the menu
+  button no longer appear there, so the landing page has one bar rather than two.
+- **The app navigation is for a signed-in general user.** Home, Identify, Snake
+  Map, Triage, Activity and History appear once signed in and are hidden again
+  on sign-out.
+- **Back from triage returns to activity when signed in and to the landing page
+  when signed out**, matching where the assessment was started from.
+- **Account is a single object** carrying a name and a role, replacing the
+  separate account name and audience flags.
+
+### Fixed
+
+- **Deep links 404'd after routing was introduced.** `vite.config.ts` now sets
+  `appType: "spa"` so `vite preview` falls back to the shell; the service worker
+  already returned the cached shell for navigations, so offline deep links work.
+- **Switching to a government account left the user stranded** on the account
+  page with no navigation, because the role change removed the app nav without
+  moving them. It now routes to the view that applies.
+- **A failing sync-count read could strand a registration.** The count refresh
+  no longer throws, so a store error cannot abort the caller's own work.
+
 ## [3.0.0] - 2026-10-07
 
 Rebuilt against `DESIGN.md`. This is a breaking release: the design system, the

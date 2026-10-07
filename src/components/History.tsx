@@ -9,7 +9,7 @@ interface HistoryProps {
 }
 
 export default function History({ onBack }: HistoryProps) {
-  const { accountName } = useAppStore();
+  const { account } = useAppStore();
   const incidents = useIncidents();
 
   if (incidents.loading) {
@@ -39,7 +39,7 @@ export default function History({ onBack }: HistoryProps) {
     );
   }
 
-  const mine = ownedIncidents(incidents.data ?? [], accountName);
+  const mine = ownedIncidents(incidents.data ?? [], account?.name ?? null);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
@@ -50,7 +50,7 @@ export default function History({ onBack }: HistoryProps) {
 
       <SectionTitle
         as="h1"
-        overline={accountName ? `Signed in as ${accountName}` : 'Signed out'}
+        overline={account ? `Signed in as ${account.name}` : 'Signed out'}
         title="Assessment history"
         lede="A chronological record held on this device, newest first. Select an entry to read the full assessment."
       />
@@ -58,9 +58,9 @@ export default function History({ onBack }: HistoryProps) {
       {mine.length === 0 ? (
         <div className="mt-6">
           <EmptyState
-            title={accountName ? 'No saved assessments yet' : 'Nothing is saved while signed out'}
+            title={account ? 'No saved assessments yet' : 'Nothing is saved while signed out'}
             body={
-              accountName
+              account
                 ? 'Complete an assessment and save it, and it will appear here.'
                 : 'Assessments you complete without an account are still shown to the health service, but they are not added to your history. Create an account to keep them.'
             }

@@ -1,15 +1,14 @@
 import { SEVERITY, formatDateTime } from '../lib/clinical';
 import { ownedIncidents, useIncidents, useSpecies } from '../lib/data';
-import type { Navigate } from '../lib/navigation';
 import { useAppStore } from '../store/store';
 import { Badge, Card, EmptyState, ErrorState, Metric, SectionTitle } from './ui/Primitives';
 
 interface DashboardProps {
-  onNavigate: Navigate;
+  onNavigate: (page: 'triage' | 'history' | 'identify' | 'discover') => void;
 }
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
-  const { accountName } = useAppStore();
+  const { account } = useAppStore();
   const incidents = useIncidents();
   const species = useSpecies();
 
@@ -40,17 +39,17 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     );
   }
 
-  const mine = ownedIncidents(incidents.data ?? [], accountName);
+  const mine = ownedIncidents(incidents.data ?? [], account?.name ?? null);
   const venomous = new Set(mine.filter((i) => i.details.species_prediction.risk !== 'NON-VENOMOUS'));
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
       <SectionTitle
         as="h1"
-        overline={accountName ? `Signed in as ${accountName}` : 'Signed out'}
+        overline={account ? `Signed in as ${account.name}` : 'Signed out'}
         title="Your activity"
         lede={
-          accountName
+          account
             ? 'Saved assessments from this device. Nothing here leaves the phone unless you sync it.'
             : 'You are using the app without an account, so there is nothing saved yet. Assessments still work; they just are not kept.'
         }
@@ -62,7 +61,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <Metric
             label="Saved assessments"
             value={String(mine.length)}
-            detail={accountName ? 'On this device' : 'Sign in to keep any'}
+            detail={account ? 'On this device' : 'Sign in to keep any'}
             emphasis
           />
           <Metric label="Venomous cases" value={String(venomous.size)} detail="Distinct species identified" />
@@ -75,7 +74,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <EmptyState
             title="No assessments yet"
             body={
-              accountName
+              account
                 ? 'Your saved assessments will appear here once you complete one.'
                 : 'Start an assessment from the home screen. It runs straight through to a result, with no account needed.'
             }

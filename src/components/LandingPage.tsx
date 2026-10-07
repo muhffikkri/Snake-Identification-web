@@ -4,6 +4,8 @@ import { Card } from './ui/Primitives';
 interface LandingProps {
   onIdentify: () => void;
   onTriage: () => void;
+  onSignIn: () => void;
+  onRegister: () => void;
 }
 
 /** Kept from the existing copy. WHO burden figures attributed, not invented. */
@@ -104,7 +106,7 @@ function initials(name: string) {
     .join('');
 }
 
-export default function Landing({ onIdentify, onTriage }: LandingProps) {
+export default function Landing({ onIdentify, onTriage, onSignIn, onRegister }: LandingProps) {
   return (
     <div className="bg-canvas">
       <nav
@@ -144,9 +146,16 @@ export default function Landing({ onIdentify, onTriage }: LandingProps) {
             </a>
           </div>
 
-          <button type="button" onClick={onTriage} className="btn btn-primary shrink-0 px-4 py-2 text-[13px]">
-            Start triage
-          </button>
+          {/* Triage stays reachable from the hero, so the navigation carries the
+              two account entry points instead. */}
+          <div className="flex flex-none items-center gap-2">
+            <button type="button" onClick={onSignIn} className="btn btn-secondary px-3.5 text-[13px]">
+              Sign in
+            </button>
+            <button type="button" onClick={onRegister} className="btn btn-primary px-3.5 text-[13px]">
+              Register
+            </button>
+          </div>
         </div>
       </nav>
 
