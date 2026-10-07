@@ -4,19 +4,19 @@ import Home from './components/Home';
 import Inference from './components/Inference';
 import Triage from './components/Triage';
 import Dashboard from './components/Dashboard';
-import { Home as HomeIcon, Camera, ClipboardList, Shield, ShieldCheck } from 'lucide-react';
+import { Home as HomeIcon, Camera, ClipboardList, Shield, ShieldCheck, ChevronDown } from 'lucide-react';
 import { useAppStore } from './store/store';
 import { logger } from './services/logger';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<string>('home');
   const [currentIncidentId, setCurrentIncidentId] = useState<string>('');
-  
+
   const { authMode, setAuthMode, networkStatus, setNetworkStatus } = useAppStore();
 
   useEffect(() => {
     logger.info('System', 'Application initialized', { network: networkStatus, mode: authMode });
-    
+
     const updateNetwork = () => {
       const status = navigator.onLine ? 'online' : 'offline';
       setNetworkStatus(status);
@@ -33,8 +33,7 @@ export default function App() {
   const handleNavigate = (page: string) => {
     logger.info('Navigation', `Navigated to page: ${page.toUpperCase()}`);
     setCurrentPage(page);
-    
-    // Smoothly scroll to diagnostic viewport on page navigation change
+
     setTimeout(() => {
       document.getElementById('app-viewport')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -60,147 +59,141 @@ export default function App() {
     document.getElementById('app-viewport')?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const navItems = [
+    { key: 'home', label: 'Beranda', icon: HomeIcon, aria: 'Navigasi ke Beranda' },
+    { key: 'inference', label: 'Edge-AI', icon: Camera, aria: 'Navigasi ke Identifikasi AI' },
+    { key: 'triage', label: 'Triage', icon: ClipboardList, aria: 'Navigasi ke Triage Medis' },
+  ];
+
   return (
-    <div className="min-h-screen bg-primaryBg font-sans select-none antialiased text-[#1E1E1E] transition-colors duration-300">
-      
-      {/* Sticky Header Selector */}
-      <header className="w-full bg-[#1E1E1E] text-[#FAFAFA] border-b border-gray-800 shadow-md sticky top-0 z-[999]">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="bg-[#70020F] p-1.5 rounded-lg border border-red-950 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <span className="font-extrabold text-lg tracking-tight text-white">SHIELD</span>
-              <span className="text-gray-400 text-xs font-semibold ml-1.5 border-l border-gray-700 pl-1.5 uppercase font-mono">v2.0</span>
-            </div>
+    <div className="min-h-screen bg-primaryBg font-sans antialiased text-[#1E1E1E]">
+      {/* Application header */}
+      <header className="dark-surface sticky top-0 z-[999] w-full border-b border-[#333333] bg-[#1E1E1E] text-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center bg-[#70020F]">
+              <Shield className="h-4 w-4 text-white" aria-hidden="true" />
+            </span>
+            <span className="flex items-baseline gap-2">
+              <span className="text-base font-extrabold tracking-tight">SHIELD</span>
+              <span className="text-[11px] font-semibold text-[#B8B8B8]">v2.0</span>
+            </span>
           </div>
 
-          <div className="flex items-center space-x-3">
-            {/* Network status */}
-            <div className="flex items-center">
-              {networkStatus === 'online' ? (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#388E3C] text-white">
-                  🟢 ONLINE
-                </span>
-              ) : (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#F57C00] text-white animate-pulse">
-                  🟢 OFFLINE READY
-                </span>
-              )}
-            </div>
+          <div className="flex items-center gap-3">
+            {/* Connectivity status: dot + text, never color alone */}
+            <span
+              role="status"
+              className={`chip ${
+                networkStatus === 'online'
+                  ? 'border-[#388E3C]/60 bg-[#388E3C]/20 text-[#A5D6A7]'
+                  : 'border-[#F57C00]/50 bg-[#F57C00]/15 text-[#FFD8A8]'
+              }`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${networkStatus === 'online' ? 'bg-[#66BB6A]' : 'bg-[#F57C00]'}`}
+                aria-hidden="true"
+              />
+              {networkStatus === 'online' ? 'Terhubung' : 'Luring siap'}
+            </span>
 
-            {/* Role drop-down selector */}
+            {/* Role selector */}
             <div className="relative">
               <select
+                aria-label="Pilih peran pengguna"
                 value={authMode}
-                onChange={(e) => handleRoleSwitch(e.target.value as any)}
-                className="bg-[#2D2D2D] text-xs font-bold text-white px-3 py-1.5 rounded-lg border border-gray-700 focus:outline-none focus:ring-1 focus:ring-[#2E7D6F] cursor-pointer appearance-none pr-8"
+                onChange={(e) => handleRoleSwitch(e.target.value as 'GUEST' | 'SECURE')}
+                className="cursor-pointer appearance-none rounded-md border border-[#4A4A4A] bg-[#2D2D2D] py-1.5 pl-3 pr-8 text-xs font-bold text-white"
               >
-                <option value="GUEST">👤 User Umum</option>
-                <option value="SECURE">🏢 Pemerintah</option>
+                <option value="GUEST">User Umum</option>
+                <option value="SECURE">Pemerintah</option>
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                ▼
-              </div>
+              <ChevronDown
+                className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#B8B8B8]"
+                aria-hidden="true"
+              />
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Container */}
-      <div>
-        {authMode === 'SECURE' ? (
-          /* Government Desktop Layout (Wide, side-by-side or well-spaced grid) */
-          <div className="max-w-6xl mx-auto p-4 w-full min-h-[80vh] flex flex-col py-6">
-            <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-2">
-              <div>
-                <h1 className="text-2xl font-bold flex items-center gap-1.5">
-                  <ShieldCheck className="w-6 h-6 text-[#2E7D6F]" />
-                  Dasbor Pengawasan Nasional
-                </h1>
-                <p className="text-xs text-gray-500">Sistem Pemantauan Terpadu Gigitan Ular & Distribusi Taksa Wilayah Indonesia</p>
-              </div>
-              <button
-                onClick={() => {
-                  setAuthMode('GUEST');
-                  setCurrentPage('home');
-                }}
-                className="text-xs font-semibold text-[#70020F] hover:underline"
+      {authMode === 'SECURE' ? (
+        /* Government layout */
+        <div className="mx-auto flex min-h-[80vh] w-full max-w-6xl flex-col px-4 py-6">
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-[color:var(--line)] pb-4">
+            <div>
+              <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight">
+                <ShieldCheck className="h-6 w-6 text-[#2E7D6F]" aria-hidden="true" />
+                Dasbor Pengawasan Nasional
+              </h1>
+              <p className="mt-1 text-sm font-medium text-[#5B5B5B]">
+                Pemantauan terpadu gigitan ular dan distribusi taksa wilayah Indonesia.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setAuthMode('GUEST');
+                setCurrentPage('home');
+              }}
+              className="border border-[color:var(--line)] px-3 py-2 text-xs font-bold text-[#70020F] hover:bg-[#70020F]/5"
+            >
+              Keluar mode instansi
+            </button>
+          </div>
+
+          <main className="flex-1">
+            <Dashboard onNavigate={handleNavigate} />
+          </main>
+        </div>
+      ) : (
+        /* General user layout */
+        <div className="flex flex-col">
+          <LandingPage onStartApp={scrollToApp} />
+
+          <div id="app-viewport" className="flex items-start justify-center bg-[#F5F5F5] px-4 py-12 scroll-mt-16">
+            <div className="relative flex min-h-[720px] w-full max-w-md flex-col overflow-hidden border border-[color:var(--line)] bg-white md:max-w-5xl">
+              <main className="flex-1 overflow-y-auto pb-24 md:pb-28">
+                {currentPage === 'home' && (
+                  <Home onNavigate={handleNavigate} onSetIncidentId={handleSetIncidentId} />
+                )}
+
+                {currentPage === 'inference' && (
+                  <Inference onNavigate={handleNavigate} onSetIncidentId={handleSetIncidentId} />
+                )}
+
+                {currentPage === 'triage' && (
+                  <Triage incidentId={currentIncidentId} onNavigate={handleNavigate} />
+                )}
+              </main>
+
+              {/* Bottom thumb-zone navigation */}
+              <nav
+                aria-label="Navigasi utama"
+                className="dark-surface absolute bottom-4 left-1/2 z-[99] flex w-[92%] -translate-x-1/2 items-center justify-around rounded-xl border border-[#333333] bg-[#1E1E1E] px-2 py-2 md:max-w-md"
               >
-                Keluar Mode Instansi
-              </button>
-            </div>
-            
-            <main className="flex-1">
-              <Dashboard onNavigate={handleNavigate} />
-            </main>
-          </div>
-        ) : (
-          /* General User Layout */
-          <div className="flex flex-col">
-            {/* Premium Landing Page */}
-            <LandingPage onStartApp={scrollToApp} />
-
-            {/* Diagnostic App Workspace Viewport */}
-            <div id="app-viewport" className="scroll-mt-16 bg-[#F5F5F5] py-12 px-4 flex justify-center items-start">
-              <div className="w-full max-w-md md:max-w-5xl bg-white border border-gray-200 rounded-[28px] shadow-2xl overflow-hidden relative min-h-[720px] flex flex-col transition-all duration-300">
-                
-                {/* Viewport screen */}
-                <main className="flex-1 overflow-y-auto pb-24 md:pb-28">
-                  {currentPage === 'home' && (
-                    <Home onNavigate={handleNavigate} onSetIncidentId={handleSetIncidentId} />
-                  )}
-                  
-                  {currentPage === 'inference' && (
-                    <Inference onNavigate={handleNavigate} onSetIncidentId={handleSetIncidentId} />
-                  )}
-                  
-                  {currentPage === 'triage' && (
-                    <Triage incidentId={currentIncidentId} onNavigate={handleNavigate} />
-                  )}
-                </main>
-
-                {/* Bottom Thumb-zone Navigation bar */}
-                <nav className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[92%] md:max-w-md bg-[#1E1E1E] border border-gray-800 rounded-2xl shadow-xl flex items-center justify-around py-2.5 px-2 z-[99]">
-                  <button
-                    onClick={() => handleNavigate('home')}
-                    className={`flex flex-col items-center space-y-0.5 focus:outline-none transition-all ${
-                      currentPage === 'home' ? 'text-[#5A9A8F] scale-110 font-bold' : 'text-gray-400 hover:text-white'
-                    }`}
-                    aria-label="Navigasi ke Beranda"
-                  >
-                    <HomeIcon className="w-5 h-5" />
-                    <span className="text-[9px] uppercase tracking-wider font-bold">Beranda</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleNavigate('inference')}
-                    className={`flex flex-col items-center space-y-0.5 focus:outline-none transition-all ${
-                      currentPage === 'inference' ? 'text-[#5A9A8F] scale-110 font-bold' : 'text-gray-400 hover:text-white'
-                    }`}
-                    aria-label="Navigasi ke Identifikasi AI"
-                  >
-                    <Camera className="w-5 h-5" />
-                    <span className="text-[9px] uppercase tracking-wider font-bold">Edge-AI</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleNavigate('triage')}
-                    className={`flex flex-col items-center space-y-0.5 focus:outline-none transition-all ${
-                      currentPage === 'triage' ? 'text-[#5A9A8F] scale-110 font-bold' : 'text-gray-400 hover:text-white'
-                    }`}
-                    aria-label="Navigasi ke Triage Medis"
-                  >
-                    <ClipboardList className="w-5 h-5" />
-                    <span className="text-[9px] uppercase tracking-wider font-bold">Triage</span>
-                  </button>
-                </nav>
-              </div>
+                {navItems.map((item) => {
+                  const active = currentPage === item.key;
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.key}
+                      onClick={() => handleNavigate(item.key)}
+                      aria-label={item.aria}
+                      aria-current={active ? 'page' : undefined}
+                      className={`flex min-w-[64px] flex-col items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-bold transition-colors ${
+                        active ? 'text-[#5A9A8F]' : 'text-[#B8B8B8] hover:text-white'
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" aria-hidden="true" />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, getIncidentLog, addIncidentLog, type IncidentDetails } from '../db/db';
 import { useAppStore } from '../store/store';
-import { Camera, Clock, Plus, Trash2, Volume2, CheckCircle2, ChevronRight, AlertCircle } from 'lucide-react';
+import { Camera, Clock, Plus, Trash2, Volume2, CheckCircle2, ChevronRight, Check, MapPin } from 'lucide-react';
 import { logger } from '../services/logger';
 
 interface TriageProps {
@@ -15,31 +15,25 @@ export default function Triage({ incidentId, onNavigate }: TriageProps) {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [biteLocation, setBiteLocation] = useState<string>('Lengan Kanan');
   const [biteTime, setBiteTime] = useState<string>(new Date().toISOString().substring(0, 16));
-  
-  // Local symptoms
+
   const [painScale, setPainScale] = useState<number>(1);
   const [swellingGrade, setSwellingGrade] = useState<number>(0);
   const [localEffects, setLocalEffects] = useState<string[]>([]);
-  
-  // Systemic symptoms
+
   const [systemicEffects, setSystemicEffects] = useState<string[]>([]);
-  
-  // Vital signs
+
   const [hr, setHr] = useState<number>(80);
   const [bp, setBp] = useState<string>('120/80');
   const [spo2, setSpo2] = useState<number>(98);
 
-  // Wound photos: Array<{ blob: string, timestamp: number }>
   const [woundPhotos, setWoundPhotos] = useState<Array<{ blob: string, timestamp: number }>>([]);
-  
-  // Severity output
+
   const [severityGrade, setSeverityGrade] = useState<number>(0);
   const [whoProtocol, setWhoProtocol] = useState<string[]>([]);
   const [alarmInterval, setAlarmInterval] = useState<number>(30);
   const [alarmActive, setAlarmActive] = useState<boolean>(false);
   const [alarmTimerSeconds, setAlarmTimerSeconds] = useState<number>(0);
 
-  // Trigger haptic feedback
   const triggerHaptic = (duration: number) => {
     if ('vibrate' in navigator) {
       navigator.vibrate(duration);
@@ -58,7 +52,6 @@ export default function Triage({ incidentId, onNavigate }: TriageProps) {
     'Muntah Darah (Hematemesis)', 'Gusi Berdarah', 'Memar Luas (Ecchymosis)', 'Kencing Merah (Hematuria)'
   ];
 
-  // Load existing incident data if any
   useEffect(() => {
     const loadIncident = async () => {
       if (!incidentId) return;
@@ -74,13 +67,13 @@ export default function Triage({ incidentId, onNavigate }: TriageProps) {
           setHr(details.symptoms.vital_signs.hr);
           setBp(details.symptoms.vital_signs.bp);
           setSpo2(details.symptoms.vital_signs.spo2);
-          
+
           const mappedPhotos = photos.map((blob, index) => ({
             blob,
             timestamp: Date.now() - (photos.length - 1 - index) * 600000
           }));
           setWoundPhotos(mappedPhotos);
-          
+
           logger.info('Triage', `Loaded existing incident data for triage: ${incidentId}`);
         }
       } catch (e) {
@@ -90,7 +83,6 @@ export default function Triage({ incidentId, onNavigate }: TriageProps) {
     loadIncident();
   }, [incidentId]);
 
-  // Calculate severity grade when inputs change
   useEffect(() => {
     let grade = 0;
 
@@ -138,11 +130,10 @@ export default function Triage({ incidentId, onNavigate }: TriageProps) {
     } else {
       setAlarmInterval(60);
     }
-    
+
     logger.info('Triage', 'Severity recalculated', { grade, alarmInterval: grade >= 3 ? 15 : grade >= 1 ? 30 : 60 });
   }, [painScale, swellingGrade, localEffects, systemicEffects, spo2]);
 
-  // Alarm simulation trigger
   useEffect(() => {
     let intervalId: any;
     if (alarmActive && alarmTimerSeconds > 0) {
@@ -179,7 +170,7 @@ export default function Triage({ incidentId, onNavigate }: TriageProps) {
         osc.start(time);
         osc.stop(time + 0.18);
       };
-      
+
       const now = audioCtx.currentTime;
       playBeep(now, 523.25);
       playBeep(now + 0.25, 523.25);
@@ -235,7 +226,7 @@ export default function Triage({ incidentId, onNavigate }: TriageProps) {
 
   const handleSaveAssessment = async () => {
     triggerHaptic(150);
-    
+
     let existingLog = await getIncidentLog(incidentId);
     let species_prediction: IncidentDetails['species_prediction'] = {
       primary: 'Tidak Teridentifikasi',
@@ -258,7 +249,7 @@ export default function Triage({ incidentId, onNavigate }: TriageProps) {
       species_prediction,
       severity_assessment: {
         grade: severityGrade,
-        grade_history: existingLog 
+        grade_history: existingLog
           ? [...existingLog.details.severity_assessment.grade_history, { timestamp: Date.now(), grade: severityGrade }]
           : [{ timestamp: Date.now(), grade: severityGrade }],
         who_protocol: whoProtocol
@@ -288,12 +279,16 @@ export default function Triage({ incidentId, onNavigate }: TriageProps) {
 
   const stepLabels = ['Konteks', 'Luka Lokal', 'Sistemik', 'Protokol WHO'];
 
-  // Left Column Content: render form inputs based on active step
+  const severityGradeChip = () => {
+    if (severityGrade >= 3) return <span className="chip chip-neuro">Grade {severityGrade}</span>;
+    if (severityGrade === 2) return <span className="chip chip-hemo">Grade {severityGrade}</span>;
+    return <span className="chip chip-safe">Grade {severityGrade}</span>;
+  };
+
   const renderLeftColumn = () => {
     return (
       <div className="space-y-4">
-        {/* Stepper progress circles */}
-        <div className="flex items-center justify-between bg-gray-50 border border-gray-200 p-3 rounded-2xl shadow-inner">
+        <div className="panel flex items-center justify-between p-3">
           {stepLabels.map((label, idx) => {
             const stepNum = idx + 1;
             const isActive = currentStep === stepNum;
@@ -305,18 +300,30 @@ export default function Triage({ incidentId, onNavigate }: TriageProps) {
                   triggerHaptic(50);
                   setCurrentStep(stepNum);
                 }}
-                className="flex flex-col items-center flex-1 relative group focus:outline-none"
+                aria-label={`Langkah ${stepNum}: ${label}`}
+                aria-current={isActive ? 'step' : undefined}
+                className="flex flex-1 flex-col items-center py-1.5"
               >
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold border transition-all ${
-                  isActive ? 'bg-[#2E7D6F] border-transparent text-white ring-4 ring-[#2E7D6F]/10' :
-                  isCompleted ? 'bg-[#1E1E1E] border-transparent text-white' :
-                  'bg-white border-gray-300 text-gray-400'
-                }`}>
-                  {isCompleted ? '✓' : stepNum}
-                </div>
-                <span className={`text-[8px] font-bold mt-1 uppercase tracking-wider ${
-                  isActive ? 'text-[#2E7D6F]' : 'text-gray-400'
-                }`}>
+                <span
+                  className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs font-bold ${
+                    isActive
+                      ? 'border-transparent bg-[#2E7D6F] text-white'
+                      : isCompleted
+                        ? 'border-transparent bg-[#1E1E1E] text-white'
+                        : 'border-[color:var(--line)] bg-white text-[#5B5B5B]'
+                  }`}
+                >
+                  {isCompleted ? (
+                    <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                  ) : (
+                    stepNum
+                  )}
+                </span>
+                <span
+                  className={`mt-1 text-[11px] font-bold ${
+                    isActive ? 'text-[#2E7D6F]' : 'text-[#5B5B5B]'
+                  }`}
+                >
                   {label.split(' ')[0]}
                 </span>
               </button>
@@ -324,105 +331,114 @@ export default function Triage({ incidentId, onNavigate }: TriageProps) {
           })}
         </div>
 
-        {/* Step 1: Context & Location */}
         {currentStep === 1 && (
-          <div className="space-y-4 step-transition">
-            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-4">
-              <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest border-b border-gray-100 pb-2">
-                1. Lokasi & Waktu Gigitan
+          <div className="step-transition space-y-4">
+            <div className="panel space-y-4 p-4">
+              <h3 className="border-b border-[color:var(--line)] pb-2 text-sm font-extrabold">
+                1. Lokasi &amp; Waktu Gigitan
               </h3>
-              
+
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Lokasi Anatomi Gigitan:</label>
+                <label htmlFor="bite-location" className="block text-xs font-bold text-[#5B5B5B]">
+                  Lokasi anatomi gigitan
+                </label>
                 <input
+                  id="bite-location"
                   type="text"
                   value={biteLocation}
                   onChange={e => setBiteLocation(e.target.value)}
-                  className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#2E7D6F] transition-all"
+                  className="field"
                   placeholder="Contoh: Pergelangan Kaki Kanan"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Waktu Gigitan Ular:</label>
+                <label htmlFor="bite-time" className="block text-xs font-bold text-[#5B5B5B]">
+                  Waktu gigitan ular
+                </label>
                 <input
+                  id="bite-time"
                   type="datetime-local"
                   value={biteTime}
                   onChange={e => setBiteTime(e.target.value)}
-                  className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#2E7D6F] transition-all"
+                  className="field"
                 />
               </div>
 
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-[10px]">
-                <span className="text-gray-400 font-bold uppercase tracking-wider text-[8px]">Pembacaan Satelit GPS:</span>
-                <p className="font-extrabold text-gray-900 mt-1 flex items-center gap-1.5">
-                  📍 {currentGPS ? `${currentGPS.lat.toFixed(5)}, ${currentGPS.lng.toFixed(5)} (Akurasi: ${currentGPS.accuracy}m)` : 'Menunggu lock koordinat...'}
+              <div className="border border-[color:var(--line)] bg-[#F5F5F5] p-3">
+                <p className="eyebrow">Pembacaan satelit GPS</p>
+                <p className="mt-1.5 flex items-start gap-2 text-sm font-bold text-[#3D3D3D]">
+                  <MapPin className="mt-0.5 h-4 w-4 flex-none text-[#2E7D6F]" aria-hidden="true" />
+                  {currentGPS
+                    ? `${currentGPS.lat.toFixed(5)}, ${currentGPS.lng.toFixed(5)} (Akurasi: ${currentGPS.accuracy}m)`
+                    : 'Menunggu lock koordinat...'}
                 </p>
               </div>
             </div>
 
             <button
               onClick={() => { triggerHaptic(50); setCurrentStep(2); }}
-              className="w-full py-3 bg-[#1E1E1E] hover:bg-black text-white font-extrabold rounded-xl text-xs tracking-wider uppercase transition-transform active:scale-95 duration-200 flex items-center justify-center space-x-1"
+              className="flex w-full items-center justify-center gap-1 bg-[#1E1E1E] py-3 text-sm font-bold text-white hover:bg-black"
             >
               <span>Lanjut ke Luka Lokal</span>
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         )}
 
-        {/* Step 2: Local wound signs */}
         {currentStep === 2 && (
-          <div className="space-y-4 step-transition">
-            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-4">
-              <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest border-b border-gray-100 pb-2">
+          <div className="step-transition space-y-4">
+            <div className="panel space-y-4 p-4">
+              <h3 className="border-b border-[color:var(--line)] pb-2 text-sm font-extrabold">
                 2. Gejala Fisik Lokal
               </h3>
 
-              {/* Pain Scale */}
               <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Skala Nyeri (VAS 1-10):</label>
-                  <span className="text-xs font-black text-[#70020F] bg-red-50 border border-red-100 px-2.5 py-0.5 rounded-full">{painScale} / 10</span>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="pain-scale" className="text-xs font-bold text-[#5B5B5B]">
+                    Skala Nyeri (VAS 1-10):
+                  </label>
+                  <span className="chip chip-neuro">{painScale} / 10</span>
                 </div>
                 <input
+                  id="pain-scale"
                   type="range"
                   min="1"
                   max="10"
                   value={painScale}
                   onChange={e => setPainScale(Number(e.target.value))}
-                  className="w-full accent-[#70020F] cursor-pointer h-1.5 bg-gray-200 rounded-lg appearance-none"
+                  className="w-full accent-[#70020F]"
                 />
-                <div className="flex justify-between text-[8px] text-gray-400 font-bold uppercase tracking-wider px-1">
-                  <span>Nir Nyeri</span>
+                <div className="flex justify-between text-[11px] font-medium text-[#5B5B5B]">
+                  <span>Nir nyeri</span>
                   <span>Sedang</span>
                   <span>Hebat</span>
                 </div>
               </div>
 
-              {/* Swelling Grade */}
               <div className="space-y-1.5 pt-1">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Pembengkakan (Swelling):</label>
-                  <span className="text-xs font-black text-[#2E7D6F] bg-teal-50 border border-teal-100 px-2.5 py-0.5 rounded-full">Grade {swellingGrade}</span>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-[#5B5B5B]">Pembengkakan (Swelling):</label>
+                  <span className="chip chip-info">Grade {swellingGrade}</span>
                 </div>
-                <div className="grid grid-cols-5 gap-1.5">
+                <div className="grid grid-cols-5 gap-1.5" role="radiogroup" aria-label="Grade pembengkakan">
                   {[0, 1, 2, 3, 4].map(g => (
                     <button
                       key={g}
                       type="button"
                       onClick={() => { triggerHaptic(50); setSwellingGrade(g); }}
-                      className={`py-2 rounded-lg border text-center font-bold text-xs transition-all ${
+                      aria-pressed={swellingGrade === g}
+                      className={`py-2 text-xs font-bold ${
                         swellingGrade === g
-                          ? 'bg-[#2E7D6F] border-transparent text-white font-black shadow-sm'
-                          : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                          ? 'bg-[#2E7D6F] text-white'
+                          : 'border border-[color:var(--line)] bg-white hover:bg-[#F5F5F5]'
                       }`}
                     >
                       G{g}
                     </button>
                   ))}
                 </div>
-                <p className="text-[9px] text-gray-500 font-semibold italic leading-normal">
+                <p className="text-xs font-medium leading-relaxed text-[#5B5B5B]">
                   {swellingGrade === 0 && 'G0: Tidak ada pembengkakan'}
                   {swellingGrade === 1 && 'G1: Terbatas di daerah sekitar gigitan'}
                   {swellingGrade === 2 && 'G2: Meluas sampai setengah ekstremitas'}
@@ -431,150 +447,154 @@ export default function Triage({ incidentId, onNavigate }: TriageProps) {
                 </p>
               </div>
 
-              {/* Local effects checklist */}
-              <div className="space-y-1.5 pt-2 border-t border-gray-100">
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Kondisi Luka Lainnya:</label>
-                <div className="grid grid-cols-1 gap-1.5">
-                  {localEffectsChoices.map(eff => (
-                    <label
-                      key={eff}
-                      className={`flex items-center space-x-2.5 p-2.5 border rounded-lg cursor-pointer text-xs font-semibold transition-all ${
-                        localEffects.includes(eff) ? 'border-[#1E1E1E] bg-[#1E1E1E]/5' : 'border-gray-200 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={localEffects.includes(eff)}
-                        onChange={() => handleToggleLocalEffect(eff)}
-                        className="text-[#2E7D6F] focus:ring-[#2E7D6F] rounded h-4 w-4"
-                      />
-                      <span>{eff}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <fieldset className="space-y-1.5 border-t border-[color:var(--line)] pt-3">
+                <legend className="text-xs font-bold text-[#5B5B5B]">Kondisi luka lainnya</legend>
+                {localEffectsChoices.map(eff => (
+                  <label
+                    key={eff}
+                    className={`flex cursor-pointer items-center gap-2.5 border p-2.5 text-xs font-semibold ${
+                      localEffects.includes(eff)
+                        ? 'border-[#1E1E1E] bg-[#1E1E1E]/5'
+                        : 'border-[color:var(--line)] hover:border-[#5B5B5B]'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={localEffects.includes(eff)}
+                      onChange={() => handleToggleLocalEffect(eff)}
+                      className="h-4 w-4 accent-[#2E7D6F]"
+                    />
+                    <span>{eff}</span>
+                  </label>
+                ))}
+              </fieldset>
             </div>
 
-            <div className="flex space-x-2">
+            <div className="flex gap-2">
               <button
                 onClick={() => { triggerHaptic(50); setCurrentStep(1); }}
-                className="w-1/3 py-2.5 border border-gray-300 font-bold rounded-xl text-xs bg-white text-gray-700 hover:bg-gray-50"
+                className="w-1/3 border border-[color:var(--line)] py-2.5 text-xs font-bold text-[#1E1E1E] hover:bg-[#F5F5F5]"
               >
                 Kembali
               </button>
               <button
                 onClick={() => { triggerHaptic(50); setCurrentStep(3); }}
-                className="w-2/3 py-2.5 bg-[#1E1E1E] hover:bg-black text-white font-extrabold rounded-xl text-xs tracking-wider uppercase flex items-center justify-center space-x-1"
+                className="flex w-2/3 items-center justify-center gap-1 bg-[#1E1E1E] py-2.5 text-xs font-bold text-white hover:bg-black"
               >
                 <span>Lanjut ke Sistemik</span>
-                <ChevronRight className="w-3.5 h-3.5" />
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           </div>
         )}
 
-        {/* Step 3: Systemic symptoms */}
         {currentStep === 3 && (
-          <div className="space-y-4 step-transition">
-            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-4">
-              <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest border-b border-gray-100 pb-2">
-                3. Gejala Sistemik & Vital
+          <div className="step-transition space-y-4">
+            <div className="panel space-y-4 p-4">
+              <h3 className="border-b border-[color:var(--line)] pb-2 text-sm font-extrabold">
+                3. Gejala Sistemik &amp; Vital
               </h3>
 
-              {/* Neurotoxic */}
               <div className="space-y-1.5">
-                <span className="text-[9px] text-[#70020F] font-black uppercase tracking-wider block">A. Efek Neurotoksik (Saraf/Kelumpuhan):</span>
-                <div className="grid grid-cols-1 gap-1.5">
-                  {neurotoxicChoices.map(nt => (
-                    <label
-                      key={nt}
-                      className={`flex items-center space-x-2.5 p-2.5 border rounded-lg cursor-pointer text-xs font-semibold transition-all ${
-                        systemicEffects.includes(nt) ? 'border-[#70020F] bg-[#70020F]/5' : 'border-gray-200 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={systemicEffects.includes(nt)}
-                        onChange={() => handleToggleSystemicEffect(nt)}
-                        className="text-[#70020F] focus:ring-[#70020F] rounded h-4 w-4"
-                      />
-                      <span>{nt}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Hemotoxic */}
-              <div className="space-y-1.5 pt-2 border-t border-gray-100">
-                <span className="text-[9px] text-[#F57C00] font-black uppercase tracking-wider block">B. Efek Hemotoksik (Pendarahan/Darah):</span>
-                <div className="grid grid-cols-1 gap-1.5">
-                  {hemotoxicChoices.map(ht => (
-                    <label
-                      key={ht}
-                      className={`flex items-center space-x-2.5 p-2.5 border rounded-lg cursor-pointer text-xs font-semibold transition-all ${
-                        systemicEffects.includes(ht) ? 'border-[#F57C00] bg-[#F57C00]/5' : 'border-gray-200 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={systemicEffects.includes(ht)}
-                        onChange={() => handleToggleSystemicEffect(ht)}
-                        className="text-[#F57C00] focus:ring-[#F57C00] rounded h-4 w-4"
-                      />
-                      <span>{ht}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Vital Signs */}
-              <div className="space-y-2 pt-2 border-t border-gray-100">
-                <span className="text-[9px] text-[#2E7D6F] font-black uppercase tracking-wider block">C. Tanda Vital Pasien:</span>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="space-y-1 text-center bg-gray-50 p-2 rounded-lg border border-gray-200">
-                    <label className="text-[8px] text-gray-500 font-bold uppercase tracking-wider block">HR (bpm)</label>
+                <p className="eyebrow text-[#70020F]">Efek neurotoksik (saraf/kelumpuhan)</p>
+                {neurotoxicChoices.map(nt => (
+                  <label
+                    key={nt}
+                    className={`flex cursor-pointer items-center gap-2.5 border p-2.5 text-xs font-semibold ${
+                      systemicEffects.includes(nt)
+                        ? 'border-[#70020F] bg-[#70020F]/5'
+                        : 'border-[color:var(--line)] hover:border-[#5B5B5B]'
+                    }`}
+                  >
                     <input
+                      type="checkbox"
+                      checked={systemicEffects.includes(nt)}
+                      onChange={() => handleToggleSystemicEffect(nt)}
+                      className="h-4 w-4 accent-[#70020F]"
+                    />
+                    <span>{nt}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="space-y-1.5 border-t border-[color:var(--line)] pt-3">
+                <p className="eyebrow text-[#8A4B00]">Efek hemotoksik (pendarahan/darah)</p>
+                {hemotoxicChoices.map(ht => (
+                  <label
+                    key={ht}
+                    className={`flex cursor-pointer items-center gap-2.5 border p-2.5 text-xs font-semibold ${
+                      systemicEffects.includes(ht)
+                        ? 'border-[#F57C00] bg-[#F57C00]/10'
+                        : 'border-[color:var(--line)] hover:border-[#5B5B5B]'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={systemicEffects.includes(ht)}
+                      onChange={() => handleToggleSystemicEffect(ht)}
+                      className="h-4 w-4 accent-[#F57C00]"
+                    />
+                    <span>{ht}</span>
+                  </label>
+                ))}
+              </div>
+
+              <fieldset className="space-y-2 border-t border-[color:var(--line)] pt-3">
+                <legend className="eyebrow text-[#2E7D6F]">Tanda vital pasien</legend>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1 text-center">
+                    <label htmlFor="vital-hr" className="block text-[11px] font-bold text-[#5B5B5B]">
+                      HR (bpm)
+                    </label>
+                    <input
+                      id="vital-hr"
                       type="number"
                       value={hr}
                       onChange={e => setHr(Number(e.target.value))}
-                      className="w-full text-center py-1 bg-white border border-gray-300 rounded font-black text-xs text-[#1E1E1E]"
+                      className="field text-center"
                     />
                   </div>
-                  <div className="space-y-1 text-center bg-gray-50 p-2 rounded-lg border border-gray-200">
-                    <label className="text-[8px] text-gray-500 font-bold uppercase tracking-wider block">BP (mmHg)</label>
+                  <div className="space-y-1 text-center">
+                    <label htmlFor="vital-bp" className="block text-[11px] font-bold text-[#5B5B5B]">
+                      BP (mmHg)
+                    </label>
                     <input
+                      id="vital-bp"
                       type="text"
                       value={bp}
                       onChange={e => setBp(e.target.value)}
-                      className="w-full text-center py-1 bg-white border border-gray-300 rounded font-black text-xs text-[#1E1E1E]"
+                      className="field text-center"
                     />
                   </div>
-                  <div className="space-y-1 text-center bg-gray-50 p-2 rounded-lg border border-gray-200">
-                    <label className="text-[8px] text-gray-500 font-bold uppercase tracking-wider block">SpO2 (%)</label>
+                  <div className="space-y-1 text-center">
+                    <label htmlFor="vital-spo2" className="block text-[11px] font-bold text-[#5B5B5B]">
+                      SpO2 (%)
+                    </label>
                     <input
+                      id="vital-spo2"
                       type="number"
                       value={spo2}
                       onChange={e => setSpo2(Number(e.target.value))}
-                      className="w-full text-center py-1 bg-white border border-gray-300 rounded font-black text-xs text-[#1E1E1E]"
+                      className="field text-center"
                     />
                   </div>
                 </div>
-              </div>
+              </fieldset>
             </div>
 
-            <div className="flex space-x-2">
+            <div className="flex gap-2">
               <button
                 onClick={() => { triggerHaptic(50); setCurrentStep(2); }}
-                className="w-1/3 py-2.5 border border-gray-300 font-bold rounded-xl text-xs bg-white text-gray-700 hover:bg-gray-50"
+                className="w-1/3 border border-[color:var(--line)] py-2.5 text-xs font-bold text-[#1E1E1E] hover:bg-[#F5F5F5]"
               >
                 Kembali
               </button>
               <button
                 onClick={() => { triggerHaptic(50); setCurrentStep(4); }}
-                className="w-2/3 py-2.5 bg-[#1E1E1E] hover:bg-black text-white font-extrabold rounded-xl text-xs tracking-wider uppercase flex items-center justify-center space-x-1"
+                className="flex w-2/3 items-center justify-center gap-1 bg-[#1E1E1E] py-2.5 text-xs font-bold text-white hover:bg-black"
               >
                 <span>Lihat Protokol WHO</span>
-                <ChevronRight className="w-3.5 h-3.5" />
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -583,127 +603,119 @@ export default function Triage({ incidentId, onNavigate }: TriageProps) {
     );
   };
 
-  // Right Column Content: always visible on iPad/Desktop, only visible on Step 4 on Mobile
   const renderRightColumn = () => {
     return (
       <div className="space-y-4">
-        {/* Severity Card */}
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-          <div className="bg-[#1E1E1E] text-white px-4 py-3 flex items-center justify-between border-b border-gray-800">
-            <span className="text-[9px] font-black uppercase tracking-wider">Triage Envenomasi</span>
-            <span className={`text-[9px] font-black px-2 py-0.5 rounded text-white shadow-sm border border-white/20 uppercase ${
-              severityGrade >= 3 ? 'bg-[#70020F]' : 
-              severityGrade === 2 ? 'bg-[#F57C00]' : 'bg-[#388E3C]'
-            }`}>
-              Grade {severityGrade}
-            </span>
+        <div className="panel overflow-hidden">
+          <div className="flex items-center justify-between border-b border-[color:var(--line)] px-4 py-3">
+            <span className="text-sm font-extrabold">Triage envenomasi</span>
+            {severityGradeChip()}
           </div>
-          
-          <div className="p-4 space-y-4">
-            {/* Visual indicator of severity */}
-            <div className="flex items-center space-x-3 bg-gray-50 border border-gray-200 p-3 rounded-xl">
-              <div className={`w-3.5 h-3.5 rounded-full flex-shrink-0 border border-white/30 ${
-                severityGrade === 4 ? 'bg-[#70020F] animate-ping' :
-                severityGrade === 3 ? 'bg-[#70020F]' :
-                severityGrade === 2 ? 'bg-[#F57C00]' :
-                severityGrade === 1 ? 'bg-[#388E3C]' : 'bg-gray-400'
-              }`} />
+
+          <div className="space-y-4 p-4">
+            <div className="flex items-center gap-3 border border-[color:var(--line)] bg-[#F5F5F5] p-3">
+              <span
+                className={`h-3.5 w-3.5 flex-none rounded-full border ${
+                  severityGrade === 4 ? 'bg-[#70020F]' :
+                  severityGrade === 3 ? 'bg-[#70020F]' :
+                  severityGrade === 2 ? 'bg-[#F57C00]' :
+                  severityGrade === 1 ? 'bg-[#388E3C]' : 'bg-[#9E9E9E]'
+                }`}
+                aria-hidden="true"
+              />
               <div>
-                <h4 className="text-xs font-black text-gray-900 uppercase tracking-wide leading-none">
+                <h4 className="text-sm font-extrabold leading-none">
                   {severityGrade === 0 && 'Nir-Envenomasi'}
                   {severityGrade === 1 && 'Ringan (Mild Local)'}
                   {severityGrade === 2 && 'Sedang (Moderate Local)'}
                   {severityGrade === 3 && 'Berat (Severe Systemic)'}
                   {severityGrade === 4 && 'Mengancam Jiwa (Life Threatening)'}
                 </h4>
-                <p className="text-[8px] text-gray-400 font-bold uppercase mt-1">Status Kritis Gigitan Ular</p>
+                <p className="mt-1.5 text-xs font-medium text-[#5B5B5B]">Status kritis gigitan ular</p>
               </div>
             </div>
 
-            {/* WHO Treatment Protocol */}
             <div className="space-y-1.5">
-              <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block">PROSEDUR PENANGANAN MEDIS (WHO):</span>
-              <div className="bg-[#1E1E1E] text-white rounded-xl p-3.5 space-y-2 text-xs leading-relaxed font-semibold">
+              <p className="eyebrow">Prosedur penanganan medis (WHO)</p>
+              <ol className="space-y-2">
                 {whoProtocol.map((line, idx) => {
                   const isWarning = line.includes('Dilarang') || line.includes('CRITICAL') || line.includes('DARURAT') || line.includes('TINDAKAN KRITIS');
                   return (
-                    <div
+                    <li
                       key={idx}
-                      className={`p-2 rounded-lg text-[10px] ${
-                        isWarning 
-                          ? 'bg-[#70020F]/20 border border-[#70020F]/30 text-red-200' 
-                          : 'bg-white/5 border border-white/10 text-gray-200'
+                      className={`border p-2.5 text-xs font-medium leading-relaxed ${
+                        isWarning
+                          ? 'border-[#70020F]/25 bg-[#70020F]/5 text-[#70020F]'
+                          : 'border-[color:var(--line)] text-[#3D3D3D]'
                       }`}
                     >
                       {line}
-                    </div>
+                    </li>
                   );
                 })}
-              </div>
+              </ol>
             </div>
 
-            {/* Active periodic assessment timer */}
-            <div className="bg-gray-50 border border-gray-200 p-3 rounded-xl flex items-center justify-between text-xs">
-              <div className="flex items-center space-x-2">
-                <Clock className="w-5 h-5 text-[#2E7D6F]" />
+            <div className="flex items-center justify-between border border-[color:var(--line)] p-3">
+              <div className="flex items-center gap-2.5">
+                <Clock className="h-4 w-4 text-[#2E7D6F]" aria-hidden="true" />
                 <div>
-                  <span className="font-extrabold text-gray-900 block leading-none text-[10px] uppercase">Re-Assessment Timer</span>
-                  <span className="text-[8px] text-gray-500 font-bold uppercase tracking-wide">Observasi Tiap {alarmInterval} Menit</span>
+                  <p className="text-xs font-extrabold leading-none">Re-assessment timer</p>
+                  <p className="mt-1 text-[11px] font-medium text-[#5B5B5B]">
+                    Observasi tiap {alarmInterval} menit
+                  </p>
                 </div>
               </div>
-              
-              <div className="flex items-center space-x-2">
-                {alarmTimerSeconds > 0 ? (
-                  <span className="font-mono font-black text-[#70020F] text-sm bg-white border border-gray-300 px-2 py-0.5 rounded shadow-sm">
-                    00:{alarmTimerSeconds.toString().padStart(2, '0')}
-                  </span>
-                ) : (
-                  <button
-                    onClick={startSimulatedAlarm}
-                    className="px-2 py-1.5 bg-[#2E7D6F] hover:bg-[#5A9A8F] text-white text-[9px] font-black rounded shadow active:scale-95 transition-all flex items-center space-x-1 uppercase"
-                  >
-                    <Volume2 className="w-3.5 h-3.5" />
-                    <span>Beep (10s)</span>
-                  </button>
-                )}
-              </div>
+
+              {alarmTimerSeconds > 0 ? (
+                <span className="font-mono text-sm font-extrabold text-[#70020F]">
+                  00:{alarmTimerSeconds.toString().padStart(2, '0')}
+                </span>
+              ) : (
+                <button
+                  onClick={startSimulatedAlarm}
+                  className="flex items-center gap-1.5 bg-[#2E7D6F] px-2.5 py-1.5 text-xs font-bold text-white hover:bg-[#256a5e]"
+                >
+                  <Volume2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  Beep (10 detik)
+                </button>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Periodic Chronological Wound Photography logging */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm space-y-3">
-          <div className="flex items-center justify-between border-b pb-2 border-gray-100">
-            <div className="flex items-center space-x-1">
-              <Camera className="w-4 h-4 text-[#2E7D6F]" />
-              <span className="text-[10px] font-black text-gray-900 uppercase tracking-wider">Histori Progresi Foto Luka</span>
+        <div className="panel space-y-3 p-4">
+          <div className="flex items-center justify-between border-b border-[color:var(--line)] pb-2">
+            <div className="flex items-center gap-1.5">
+              <Camera className="h-4 w-4 text-[#2E7D6F]" aria-hidden="true" />
+              <span className="text-sm font-extrabold">Histori progresi foto luka</span>
             </div>
-            <span className="text-[8px] text-gray-400 font-bold uppercase">CHRONOLOGICAL BASELINE</span>
+            <span className="text-[11px] font-medium text-[#5B5B5B]">Pencatatan berkala</span>
           </div>
-          
+
           <div className="grid grid-cols-4 gap-2">
             {woundPhotos.map((photo, index) => {
               const dateLabel = new Date(photo.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
               return (
-                <div key={index} className="relative aspect-square border border-gray-200 rounded-lg bg-gray-50 overflow-hidden group shadow-sm">
-                  <img src={photo.blob} alt={`wound-${index}`} className="object-cover w-full h-full" />
+                <div key={index} className="relative aspect-square overflow-hidden border border-[color:var(--line)] bg-[#F0F0F0]">
+                  <img src={photo.blob} alt={`Foto luka ${index + 1}`} className="h-full w-full object-cover" />
                   <button
                     onClick={() => handleRemovePhoto(index)}
-                    className="absolute top-0.5 right-0.5 bg-[#70020F] text-white rounded-full p-0.5 hover:bg-red-800 transition-colors shadow-md"
-                    title="Hapus foto"
+                    aria-label={`Hapus foto luka ${index + 1}`}
+                    className="absolute right-0.5 top-0.5 bg-[#70020F] p-1 text-white hover:bg-[#8b0313]"
                   >
-                    <Trash2 className="w-2.5 h-2.5" />
+                    <Trash2 className="h-3 w-3" aria-hidden="true" />
                   </button>
-                  <div className="absolute bottom-0 left-0 right-0 text-[7px] bg-[#1E1E1E]/80 text-[#FAFAFA] py-0.5 text-center font-bold truncate">
+                  <span className="absolute inset-x-0 bottom-0 truncate bg-[#1E1E1E]/80 px-1 py-0.5 text-center text-[10px] font-bold text-white">
                     {dateLabel}
-                  </div>
+                  </span>
                 </div>
               );
             })}
-            
-            <label className="aspect-square border border-dashed border-gray-300 hover:border-gray-400 rounded-lg flex flex-col items-center justify-center text-center cursor-pointer bg-gray-50 text-gray-500 transition-colors">
-              <Plus className="w-5 h-5 text-gray-400" />
-              <span className="text-[8px] font-black text-gray-500 uppercase mt-0.5">Ambil Foto</span>
+
+            <label className="flex aspect-square cursor-pointer flex-col items-center justify-center border border-dashed border-[#5B5B5B] text-center text-[#5B5B5B] hover:border-[#1E1E1E]">
+              <Plus className="h-5 w-5" aria-hidden="true" />
+              <span className="mt-1 text-[11px] font-bold">Ambil Foto</span>
               <input
                 type="file"
                 accept="image/*"
@@ -714,14 +726,13 @@ export default function Triage({ incidentId, onNavigate }: TriageProps) {
           </div>
         </div>
 
-        {/* Action buttons (only displayed here on Desktop view) */}
-        <div className="hidden md:flex space-x-2 pt-2">
+        <div className="hidden pt-2 md:flex">
           <button
             onClick={handleSaveAssessment}
-            className="w-full py-3 bg-[#2E7D6F] hover:bg-[#5A9A8F] text-white font-extrabold rounded-xl text-xs tracking-wider uppercase flex items-center justify-center space-x-1.5 shadow-md active:scale-95 transition-transform"
+            className="flex w-full items-center justify-center gap-1.5 bg-[#2E7D6F] py-3 text-sm font-bold text-white hover:bg-[#256a5e]"
           >
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Simpan Rekam Medis</span>
+            <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+            Simpan Rekam Medis
           </button>
         </div>
       </div>
@@ -729,83 +740,69 @@ export default function Triage({ incidentId, onNavigate }: TriageProps) {
   };
 
   return (
-    <div className="flex flex-col min-h-[640px] bg-white text-[#1E1E1E] p-4 md:p-8">
-      
-      {/* Header bar inside */}
-      <div className="flex items-center justify-between border-b border-gray-200 pb-3 mb-4">
+    <div className="flex min-h-[640px] flex-col bg-white p-4 text-[#1E1E1E] md:p-8">
+      <div className="mb-4 flex items-center justify-between border-b border-[color:var(--line)] pb-3">
         <button
           onClick={() => onNavigate('home')}
-          className="text-xs font-bold text-gray-500 hover:text-gray-900 border border-gray-200 rounded-lg px-2.5 py-1"
+          className="border border-[color:var(--line)] px-2.5 py-1.5 text-xs font-bold text-[#5B5B5B] hover:text-[#1E1E1E]"
         >
-          ← Beranda
+          Beranda
         </button>
-        <span className="text-sm font-black uppercase tracking-wider">Triage Klinis WHO</span>
-        <div className="w-10"></div>
+        <h1 className="text-sm font-extrabold">Triage Klinis WHO</h1>
+        <div className="w-10" aria-hidden="true" />
       </div>
 
-      {/* Main Container splits into 2-column on screens >= 768px (iPad/Desktop) */}
-      <div className="flex-1 flex flex-col justify-start">
-        
-        {/* Responsive Grid layout */}
-        <div className="md:grid md:grid-cols-12 md:gap-8 md:items-start flex-1 flex flex-col justify-start">
-          
-          {/* LEFT COLUMN: Stepper form (Steps 1, 2, 3) */}
-          <div className="md:col-span-6 w-full flex flex-col justify-start">
-            {/* On mobile: show step 1, 2, 3 or 4. On desktop: step 4 is displayed live on the right, so on the left we only display steps 1, 2, 3 */}
+      <div className="flex flex-1 flex-col justify-start">
+        <div className="flex flex-1 flex-col justify-start md:grid md:grid-cols-12 md:items-start md:gap-8">
+          <div className="flex w-full flex-col justify-start md:col-span-6">
             {(currentStep < 4 || !window.matchMedia('(min-width: 768px)').matches) ? (
               renderLeftColumn()
             ) : (
-              <div className="bg-gray-50 border border-gray-200 p-6 rounded-2xl shadow-sm text-center space-y-4">
-                <div className="w-12 h-12 rounded-full bg-[#2E7D6F]/10 text-[#2E7D6F] flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-6 h-6" />
-                </div>
-                <h3 className="text-sm font-extrabold uppercase tracking-wider text-gray-900">Formulir Triase Selesai</h3>
-                <p className="text-xs text-gray-500 leading-normal">
-                  Rincian triase pasien dan instruksi darurat WHO telah diperbarui secara langsung di kolom kanan. 
+              <div className="panel space-y-4 p-6 text-center">
+                <CheckCircle2 className="mx-auto h-8 w-8 text-[#2E7D6F]" aria-hidden="true" />
+                <h3 className="text-sm font-extrabold">Formulir triase selesai</h3>
+                <p className="text-xs font-medium leading-relaxed text-[#5B5B5B]">
+                  Rincian triase pasien dan instruksi darurat WHO ditampilkan di panel sebelah kanan.
                   Gunakan tombol simpan untuk merekam data secara terenkripsi.
                 </p>
                 <button
                   onClick={() => { triggerHaptic(50); setCurrentStep(1); }}
-                  className="px-4 py-2 border border-gray-300 text-[10px] font-black rounded-lg text-gray-700 bg-white hover:bg-gray-50 uppercase"
+                  className="border border-[color:var(--line)] px-4 py-2 text-xs font-bold text-[#1E1E1E] hover:bg-[#F5F5F5]"
                 >
-                  Ubah Data Gejala
+                  Ubah data gejala
                 </button>
               </div>
             )}
           </div>
 
-          {/* RIGHT COLUMN: Results, Protocols & Photos (Always live on Desktop/iPad, step 4 only on mobile) */}
-          <div className="md:col-span-6 w-full mt-6 md:mt-0 flex flex-col justify-start">
+          <div className="mt-6 flex w-full flex-col justify-start md:col-span-6 md:mt-0">
             {(currentStep === 4 || window.matchMedia('(min-width: 768px)').matches) ? (
               renderRightColumn()
             ) : (
-              <div className="hidden md:block bg-gray-50 border border-dashed border-gray-300 p-8 rounded-2xl text-center text-gray-400 text-xs">
+              <div className="hidden border border-dashed border-[#5B5B5B]/40 p-8 text-center text-xs font-medium text-[#5B5B5B] md:block">
                 Mengisi kuesioner gejala di sebelah kiri akan menghitung tingkat keparahan triage secara real-time.
               </div>
             )}
 
-            {/* Save button fallback only visible on mobile step 4 */}
             {currentStep === 4 && (
-              <div className="md:hidden flex space-x-2 pt-4">
+              <div className="mt-4 flex gap-2 md:hidden">
                 <button
                   onClick={() => { triggerHaptic(50); setCurrentStep(3); }}
-                  className="w-1/3 py-3 border border-gray-300 font-bold rounded-lg text-xs bg-white text-gray-700 uppercase tracking-wider"
+                  className="w-1/3 border border-[color:var(--line)] py-3 text-xs font-bold text-[#1E1E1E] hover:bg-[#F5F5F5]"
                 >
                   Kembali
                 </button>
                 <button
                   onClick={handleSaveAssessment}
-                  className="w-2/3 py-3 bg-[#2E7D6F] hover:bg-[#5A9A8F] text-white font-extrabold rounded-lg text-xs tracking-wider uppercase flex items-center justify-center space-x-1.5 shadow"
+                  className="flex w-2/3 items-center justify-center gap-1.5 bg-[#2E7D6F] py-3 text-xs font-bold text-white hover:bg-[#256a5e]"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Simpan Rekam Medis</span>
+                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                  Simpan Rekam Medis
                 </button>
               </div>
             )}
           </div>
-
         </div>
-
       </div>
     </div>
   );

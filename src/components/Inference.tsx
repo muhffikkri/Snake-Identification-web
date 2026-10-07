@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Camera, Check, RefreshCw, ArrowRight, AlertCircle, Upload } from 'lucide-react';
+import React, { useState } from 'react';
+import { Camera, Check, RefreshCw, ArrowRight, AlertCircle, Upload, Circle } from 'lucide-react';
 import { db, addIncidentLog } from '../db/db';
 import { useAppStore } from '../store/store';
 import { logger } from '../services/logger';
@@ -8,46 +8,51 @@ const DATASET_IMAGES = [
   {
     path: '/dataset/Acanthophis_laevis_obs121339246_photo205315764.jpg',
     label: 'Acanthophis laevis (Obs 1)',
-    risk: 'NEUROTOXIC',
-    badgeColor: 'bg-[#70020F]'
+    risk: 'NEUROTOXIC'
   },
   {
     path: '/dataset/Acanthophis_laevis_obs137275705_photo234421463.jpg',
     label: 'Acanthophis laevis (Obs 2)',
-    risk: 'NEUROTOXIC',
-    badgeColor: 'bg-[#70020F]'
+    risk: 'NEUROTOXIC'
   },
   {
     path: '/dataset/Acanthophis_laevis_obs19025516_photo29178993.jpg',
     label: 'Acanthophis laevis (Obs 3)',
-    risk: 'NEUROTOXIC',
-    badgeColor: 'bg-[#70020F]'
+    risk: 'NEUROTOXIC'
   },
   {
     path: '/dataset/Ahaetulla_fasciolata_obs202932892_photo358471931.jpg',
     label: 'Ahaetulla fasciolata (Obs 1)',
-    risk: 'NON-VENOMOUS',
-    badgeColor: 'bg-[#388E3C]'
+    risk: 'NON-VENOMOUS'
   },
   {
     path: '/dataset/Ahaetulla_fasciolata_obs310503736_photo560406804.jpg',
     label: 'Ahaetulla fasciolata (Obs 2)',
-    risk: 'NON-VENOMOUS',
-    badgeColor: 'bg-[#388E3C]'
+    risk: 'NON-VENOMOUS'
   },
   {
     path: '/dataset/Ahaetulla_prasina_0003.jpg',
     label: 'Ahaetulla prasina',
-    risk: 'NON-VENOMOUS',
-    badgeColor: 'bg-[#388E3C]'
+    risk: 'NON-VENOMOUS'
   },
   {
     path: '/dataset/Ahaetulla_rufusoculara_obs252803925_photo456126350.jpg',
     label: 'Ahaetulla rufusoculara',
-    risk: 'NON-VENOMOUS',
-    badgeColor: 'bg-[#388E3C]'
+    risk: 'NON-VENOMOUS'
   }
 ];
+
+function riskChip(risk: string) {
+  if (risk === 'NEUROTOXIC') return <span className="chip chip-neuro">Neurotoksik</span>;
+  if (risk === 'HEMOTOXIC') return <span className="chip chip-hemo">Hemotoksik</span>;
+  return <span className="chip chip-safe">Tidak berbisa</span>;
+}
+
+function resultChip(venom: string) {
+  if (venom === 'NEUROTOXIC') return <span className="chip chip-neuro">{venom}</span>;
+  if (venom === 'HEMOTOXIC') return <span className="chip chip-hemo">{venom}</span>;
+  return <span className="chip chip-safe">{venom}</span>;
+}
 
 interface InferenceProps {
   onNavigate: (page: string) => void;
@@ -60,47 +65,37 @@ export default function Inference({ onNavigate, onSetIncidentId }: InferenceProp
   const [step, setStep] = useState<'upload' | 'analyzing' | 'result'>('upload');
   const [logs, setLogs] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  
-  // Results states
+
   const [primaryResult, setPrimaryResult] = useState<any>(null);
   const [alternatives, setAlternatives] = useState<any[]>([]);
   const [selectedTaxonId, setSelectedTaxonId] = useState<number | null>(null);
 
-  // Trigger haptic feedback
   const triggerHaptic = (duration: number) => {
     if ('vibrate' in navigator) {
       navigator.vibrate(duration);
     }
   };
 
-  // Simulated AI inference process
   const startAnalysis = async (imgSrc: string) => {
     setSelectedImage(imgSrc);
     setStep('analyzing');
     setLogs([]);
-    
+
     logger.info('EdgeAI', 'Starting local image analysis pipeline...');
 
-    // Stage 1: Object detection
     await addLog("YOLO26l isolating object...", 0);
     await addLog("Applying 10% bounding box margin padding...", 350);
     await addLog("Object isolated with confidence=0.92.", 750);
-
-    // Stage 2: Feature extraction
     await addLog("Extracting TFLite WASM embeddings (ConvNeXt-Large)...", 1000);
     await addLog("Generating 1536-dimensional feature vector...", 1600);
     await addLog("XGBoost classifier executing (500 estimators)...", 2000);
-
-    // Stage 3: Geospatial fusion
     await addLog("Applying Binary Multiplicative Geospatial Fusion...", 2300);
     await addLog("Querying species_distribution_matrix in local IndexedDB...", 2600);
-    
-    // Fetch species and run mock fusion
+
     const allSpecies = await db.species.toArray();
     const lat = currentGPS?.lat || -6.2088;
     const lng = currentGPS?.lng || 106.8456;
 
-    // Determine target species based on file path or name
     let targetScientificName = '';
     const imgLower = imgSrc.toLowerCase();
     if (imgLower.includes('acanthophis_laevis')) {
@@ -112,22 +107,18 @@ export default function Inference({ onNavigate, onSetIncidentId }: InferenceProp
     } else if (imgLower.includes('ahaetulla_rufusoculara')) {
       targetScientificName = 'Ahaetulla rufusoculara';
     } else {
-      // Fallback for custom image uploads or testing mocks
       if (allSpecies.length > 0) {
-        // Match scientific name mock from testing or default to first
         const match = allSpecies.find(s => imgLower.includes(s.scientific_name.toLowerCase().replace(' ', '_')));
         targetScientificName = match ? match.scientific_name : allSpecies[0].scientific_name;
       }
     }
-    
-    // Simulate eliminating species based on GPS bounding boxes
+
     const matched = allSpecies.map(sp => {
-      // For simulation, force the target species to pass the geospatial bounding box constraint
       const inBbox = (lat >= sp.geo_bbox.latMin && lat <= sp.geo_bbox.latMax &&
                       lng >= sp.geo_bbox.lngMin && lng <= sp.geo_bbox.lngMax) ||
                      (sp.scientific_name === targetScientificName);
       const geo_binary = inBbox ? 1.0 : 0.0;
-      
+
       let p_vis = 0.05;
       if (sp.scientific_name === targetScientificName) {
         p_vis = 0.88;
@@ -137,12 +128,7 @@ export default function Inference({ onNavigate, onSetIncidentId }: InferenceProp
 
       const p_fused = p_vis * geo_binary;
 
-      return {
-        ...sp,
-        p_vis,
-        geo_binary,
-        p_fused
-      };
+      return { ...sp, p_vis, geo_binary, p_fused };
     });
 
     const sumFused = matched.reduce((acc, curr) => acc + curr.p_fused, 0) || 1.0;
@@ -157,13 +143,13 @@ export default function Inference({ onNavigate, onSetIncidentId }: InferenceProp
     setTimeout(() => {
       const primary = finalResults[0] || allSpecies[0];
       const alts = finalResults.slice(1, 5);
-      
+
       setPrimaryResult(primary);
       setAlternatives(alts);
       setSelectedTaxonId(primary.taxon_id);
       setStep('result');
       triggerHaptic(150);
-      
+
       logger.info('EdgeAI', 'Inference pipeline completed successfully', {
         predictedSp: primary.scientific_name,
         confidence: primary.confidence
@@ -180,7 +166,6 @@ export default function Inference({ onNavigate, onSetIncidentId }: InferenceProp
     });
   };
 
-  // Handle image capture via mockup input
   const handleImageInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -194,25 +179,15 @@ export default function Inference({ onNavigate, onSetIncidentId }: InferenceProp
     }
   };
 
-  const handleSimulateDirectSelection = (taxonId: number) => {
-    const mockImages: Record<number, string> = {
-      0: '/dataset/Acanthophis_laevis_obs121339246_photo205315764.jpg',
-      1: '/dataset/Ahaetulla_fasciolata_obs202932892_photo358471931.jpg',
-      2: '/dataset/Ahaetulla_prasina_0003.jpg',
-      3: '/dataset/Ahaetulla_rufusoculara_obs252803925_photo456126350.jpg'
-    };
-    startAnalysis(mockImages[taxonId] || mockImages[0]);
-  };
-
   const handleProceedToTriage = async () => {
     if (!selectedTaxonId || !primaryResult) return;
-    
+
     triggerHaptic(100);
     const incidentId = `inc_${Math.floor(Math.random() * 10000000)}`;
     onSetIncidentId(incidentId);
 
     const chosenSpecies = [primaryResult, ...alternatives].find(x => x.taxon_id === selectedTaxonId);
-    
+
     logger.info('EdgeAI', 'Confirming species identification for Incident logging', {
       incidentId,
       chosenSpecies: chosenSpecies?.scientific_name
@@ -256,73 +231,75 @@ export default function Inference({ onNavigate, onSetIncidentId }: InferenceProp
     onNavigate('triage');
   };
 
+  const renderLogRow = (log: string, index: number, isLast: boolean) => {
+    const parsed = log.match(/^\[T\+(\d+)ms\]\s*(.*)$/);
+    const message = parsed ? parsed[2] : log;
+    const time = parsed ? `T+${parsed[1]}ms` : '';
+    const active = isLast && step === 'analyzing';
+    return (
+      <li key={index} className="flex items-start gap-3 py-1.5">
+        {active ? (
+          <RefreshCw className="mt-0.5 h-3.5 w-3.5 flex-none animate-spin text-[#2E7D6F]" aria-hidden="true" />
+        ) : (
+          <Check className="mt-0.5 h-3.5 w-3.5 flex-none text-[#388E3C]" aria-hidden="true" />
+        )}
+        <span className="flex-1 text-xs font-medium leading-relaxed text-[#3D3D3D]">{message}</span>
+        <span className="font-mono text-[10px] font-semibold text-[#5B5B5B]">{time}</span>
+      </li>
+    );
+  };
+
   return (
-    <div className="flex flex-col min-h-[640px] bg-white text-[#1E1E1E] p-4 md:p-8">
-      
-      {/* Header bar inside */}
-      <div className="flex items-center justify-between border-b border-gray-200 pb-3 mb-4">
+    <div className="flex min-h-[640px] flex-col bg-white p-4 text-[#1E1E1E] md:p-8">
+      <div className="mb-4 flex items-center justify-between border-b border-[color:var(--line)] pb-3">
         <button
           onClick={() => onNavigate('home')}
-          className="text-xs font-bold text-gray-500 hover:text-gray-900 border border-gray-200 rounded-lg px-2.5 py-1"
+          className="border border-[color:var(--line)] px-2.5 py-1.5 text-xs font-bold text-[#5B5B5B] hover:text-[#1E1E1E]"
         >
-          ← Batal
+          Batal
         </button>
-        <span className="text-sm font-black uppercase tracking-wider">Identifikasi Edge-AI</span>
-        <div className="w-10"></div>
+        <h1 className="text-sm font-extrabold">Identifikasi Edge-AI</h1>
+        <div className="w-10" aria-hidden="true" />
       </div>
 
-      <div className="flex-1 flex flex-col justify-start">
-        
-        {/* Upload Mode */}
+      <div className="flex flex-1 flex-col justify-start">
+        {/* Upload */}
         {step === 'upload' && (
-          <div className="md:grid md:grid-cols-12 md:gap-8 flex-1 flex flex-col justify-start py-2 step-transition">
-            
-            {/* Left Column: Upload box */}
-            <div className="md:col-span-6 flex flex-col justify-center">
-              <div className="border-2 border-dashed border-gray-300 hover:border-[#2E7D6F] rounded-2xl p-8 bg-gray-50 flex flex-col items-center justify-center text-center space-y-4 transition-colors duration-300">
-                <div className="w-16 h-16 rounded-full bg-[#2E7D6F]/10 text-[#2E7D6F] flex items-center justify-center border border-[#2E7D6F]/20">
-                  <Camera className="w-8 h-8" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wide">Pindai / Ambil Foto</h3>
-                  <p className="text-[10px] text-gray-500 max-w-[200px] mx-auto leading-normal">
-                    Posisikan ular sejajar di tengah bingkai kamera. Gunakan pencahayaan yang cukup.
-                  </p>
-                </div>
-
-                <label className="cursor-pointer bg-[#1E1E1E] hover:bg-black text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition-transform active:scale-95 duration-200 flex items-center gap-1.5 uppercase tracking-wider">
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Unggah Foto Ular</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageInput}
-                    className="hidden"
-                  />
+          <div className="step-transition flex flex-1 flex-col justify-start py-2 md:grid md:grid-cols-12 md:gap-8">
+            <div className="flex flex-col justify-center md:col-span-6">
+              <div className="flex flex-col items-center justify-center border-2 border-dashed border-[color:var(--line)] p-8 text-center">
+                <Camera className="h-8 w-8 text-[#2E7D6F]" aria-hidden="true" />
+                <h3 className="mt-4 text-base font-extrabold">Pindai / Ambil Foto</h3>
+                <p className="mt-2 max-w-[220px] text-xs font-medium leading-relaxed text-[#5B5B5B]">
+                  Posisikan ular di tengah bingkai. Gunakan pencahayaan yang cukup.
+                </p>
+                <label className="mt-5 flex cursor-pointer items-center gap-2 bg-[#1E1E1E] px-5 py-2.5 text-xs font-bold text-white hover:bg-black">
+                  <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+                  Unggah Foto Ular
+                  <input type="file" accept="image/*" onChange={handleImageInput} className="hidden" />
                 </label>
               </div>
             </div>
 
-            {/* Right Column: Demo simulator */}
-            <div className="md:col-span-6 flex flex-col justify-center mt-6 md:mt-0">
-              <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 text-center">
-                  SIMULASI DEMO (PILIH FOTO DATASET)
-                </h4>
-                <div className="grid grid-cols-2 gap-2 max-h-[310px] overflow-y-auto pr-1">
+            <div className="mt-6 flex flex-col justify-center md:col-span-6 md:mt-0">
+              <div className="panel p-4">
+                <h4 className="eyebrow mb-4">Simulasi demo &middot; pilih foto dataset</h4>
+                <div className="grid max-h-[320px] grid-cols-2 gap-2 overflow-y-auto pr-1">
                   {DATASET_IMAGES.map((img, idx) => (
                     <button
                       key={idx}
                       onClick={() => startAnalysis(img.path)}
-                      className="p-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 hover:border-[#2E7D6F] rounded-xl text-[10px] font-bold text-gray-800 text-left flex items-center space-x-2 transition-all duration-200"
+                      className="flex items-center gap-2 border border-[color:var(--line)] p-2 text-left hover:border-[#2E7D6F]"
                     >
-                      <img src={img.path} alt={img.label} className="w-8 h-8 rounded object-cover flex-shrink-0 border border-gray-200" />
-                      <div className="flex-1 min-w-0">
-                        <span className="block truncate font-extrabold text-[8px] text-gray-900 leading-tight">{img.label}</span>
-                        <span className={`inline-block text-[6px] font-extrabold px-1.5 py-0.2 rounded text-white mt-1 uppercase ${img.badgeColor}`}>
-                          {img.risk}
-                        </span>
-                      </div>
+                      <img
+                        src={img.path}
+                        alt={img.label}
+                        className="h-9 w-9 flex-none border border-[color:var(--line)] object-cover"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-bold leading-tight">{img.label}</span>
+                        <span className="mt-1 block">{riskChip(img.risk)}</span>
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -331,192 +308,165 @@ export default function Inference({ onNavigate, onSetIncidentId }: InferenceProp
           </div>
         )}
 
-        {/* Inference Processing Mode */}
+        {/* Analyzing */}
         {step === 'analyzing' && (
-          <div className="md:grid md:grid-cols-12 md:gap-8 flex-1 flex flex-col justify-start py-2 step-transition">
-            {/* Left Column: Loading status */}
-            <div className="md:col-span-5 flex flex-col justify-center">
-              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center text-center">
-                <RefreshCw className="w-10 h-10 text-[#2E7D6F] animate-spin mb-4" />
-                <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wide">Pemrosesan Model Edge-AI</h3>
-                <p className="text-[10px] text-gray-500 mt-1">Mengkompilasi embeddings lokal secara offline...</p>
+          <div className="step-transition flex flex-1 flex-col justify-start py-2 md:grid md:grid-cols-12 md:gap-8">
+            <div className="flex flex-col justify-center md:col-span-5">
+              <div className="panel flex flex-col items-center justify-center p-6 text-center">
+                <RefreshCw className="mb-4 h-8 w-8 animate-spin text-[#2E7D6F]" aria-hidden="true" />
+                <h3 className="text-base font-extrabold">Pemrosesan Model Edge-AI</h3>
+                <p className="mt-1 text-xs font-medium text-[#5B5B5B]">
+                  Menjalankan embeddings lokal sepenuhnya luring.
+                </p>
               </div>
             </div>
 
-            {/* Right Column: Console terminal */}
-            <div className="md:col-span-7 flex flex-col justify-center mt-4 md:mt-0">
-              <div className="bg-[#1E1E1E] text-[#388E3C] p-4 rounded-xl font-mono text-[9px] space-y-1.5 shadow-inner h-48 overflow-y-auto border border-gray-800 leading-snug">
-                {logs.map((log, index) => (
-                  <div key={index}>
-                    {log}
-                  </div>
-                ))}
+            <div className="mt-4 flex flex-col justify-center md:col-span-7 md:mt-0">
+              <div className="panel p-4">
+                <p className="eyebrow mb-2">Progres pipeline</p>
+                <ul className="divide-y divide-[color:var(--line)]">
+                  {logs.map((log, index) => renderLogRow(log, index, index === logs.length - 1))}
+                  {logs.length === 0 && (
+                    <li className="flex items-center gap-3 py-1.5">
+                      <Circle className="h-3.5 w-3.5 flex-none text-[#5B5B5B]" aria-hidden="true" />
+                      <span className="text-xs font-medium text-[#5B5B5B]">Menyiapkan model...</span>
+                    </li>
+                  )}
+                </ul>
               </div>
             </div>
           </div>
         )}
 
-        {/* Results view Mode */}
+        {/* Result */}
         {step === 'result' && primaryResult && (
-          <div className="md:grid md:grid-cols-12 md:gap-8 flex-1 flex flex-col justify-start py-2 step-transition">
-            
-            {/* Left Column: Primary Prediction Result Card */}
-            <div className="md:col-span-6 flex flex-col justify-start">
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-md">
-                <div className="bg-[#1E1E1E] text-white px-3 py-2.5 flex items-center justify-between border-b border-gray-800">
-                  <span className="text-[9px] font-black text-[#5A9A8F] uppercase tracking-wider">Hasil Prediksi Utama</span>
-                  <span className="text-[9px] bg-[#2E7D6F] px-1.5 py-0.5 rounded font-extrabold text-white uppercase">Valid Spasial</span>
+          <div className="step-transition flex flex-1 flex-col justify-start py-2 md:grid md:grid-cols-12 md:gap-8">
+            <div className="flex flex-col justify-start md:col-span-6">
+              <div className="panel overflow-hidden">
+                <div className="flex items-center justify-between border-b border-[color:var(--line)] px-4 py-2.5">
+                  <span className="eyebrow">Hasil Prediksi Utama</span>
+                  <span className="chip chip-info">Valid spasial</span>
                 </div>
-                
-                <div className="h-44 w-full bg-gray-100 relative">
+
+                <div className="relative h-44 w-full bg-[#F0F0F0]">
                   <img
                     src={selectedImage || primaryResult.reference_images[0]}
                     alt={primaryResult.scientific_name}
-                    className="w-full h-full object-cover"
+                    className="h-full w-full object-cover"
                   />
-                  <div className="absolute top-2 right-2">
-                    <span className={`text-[9px] font-black px-2 py-1 rounded-full text-white shadow-sm border border-white/20 uppercase ${
-                      primaryResult.venom_type === 'NEUROTOXIC' ? 'bg-[#70020F]' :
-                      primaryResult.venom_type === 'HEMOTOXIC' ? 'bg-[#F57C00]' : 'bg-[#388E3C]'
-                    }`}>
-                      {primaryResult.venom_type}
-                    </span>
-                  </div>
                 </div>
 
-                <div className="p-4 space-y-3">
+                <div className="space-y-4 p-4">
                   <div>
-                    <h3 className="text-lg font-black text-gray-900 leading-tight">
-                      {primaryResult.scientific_name}
-                    </h3>
-                    <p className="text-xs text-gray-500 font-bold italic leading-none mt-1">
+                    <h3 className="text-lg font-extrabold leading-tight">{primaryResult.scientific_name}</h3>
+                    <p className="mt-1 text-sm font-medium italic text-[#5B5B5B]">
                       {primaryResult.common_name_indonesian}
                     </p>
+                    <div className="mt-2">{resultChip(primaryResult.venom_type)}</div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 bg-gray-50 border border-gray-200 p-2.5 rounded-lg text-[10px]">
+                  <div className="grid grid-cols-2 gap-3 border border-[color:var(--line)] p-3">
                     <div>
-                      <span className="text-gray-400 font-bold uppercase tracking-wider text-[8px]">Confidence:</span>
-                      <p className="text-base font-black text-gray-900">
-                        {(primaryResult.confidence * 100).toFixed(1)}%
-                      </p>
+                      <p className="eyebrow">Confidence</p>
+                      <p className="mt-1 text-base font-extrabold">{(primaryResult.confidence * 100).toFixed(1)}%</p>
                     </div>
                     <div>
-                      <span className="text-gray-400 font-bold uppercase tracking-wider text-[8px]">KDE Spasial:</span>
-                      <p className="text-base font-black text-[#2E7D6F]">
+                      <p className="eyebrow">KDE spasial</p>
+                      <p className="mt-1 text-base font-extrabold text-[#2E7D6F]">
                         {(primaryResult.p_vis * 100).toFixed(0)}%
                       </p>
                     </div>
                   </div>
 
                   <div>
-                    <span className="text-[8px] text-gray-400 font-black uppercase tracking-wider">Ciri Morfologi Konfirmasi:</span>
-                    <div className="grid grid-cols-1 gap-1.5 mt-1.5">
+                    <p className="eyebrow mb-2">Ciri morfologi konfirmasi</p>
+                    <ul className="space-y-1.5">
                       {primaryResult.morphological_traits.map((trait: string, idx: number) => (
-                        <div key={idx} className="flex items-center space-x-2 text-[10px] text-gray-700 font-semibold">
-                          <Check className="w-3.5 h-3.5 text-[#388E3C] flex-shrink-0" />
+                        <li key={idx} className="flex items-start gap-2 text-xs font-medium text-[#3D3D3D]">
+                          <Check className="mt-0.5 h-3.5 w-3.5 flex-none text-[#388E3C]" aria-hidden="true" />
                           <span>{trait}</span>
-                        </div>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Right Column: Alternatives Recommendations & Actions */}
-            <div className="md:col-span-6 flex flex-col justify-between space-y-4 mt-6 md:mt-0">
-              
-              {/* Alternatives Cards List */}
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm space-y-3">
-                <div className="border-b border-gray-200 pb-2">
-                  <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-wider">
-                    Ular Rekomendasi / Alternatif
-                  </h4>
-                  <p className="text-[8px] text-gray-500 mt-0.5 font-medium leading-none">
-                    Pilih salah satu kartu di bawah jika identifikasi visual utama tidak akurat.
+            <div className="mt-6 flex flex-col justify-between gap-4 md:col-span-6 md:mt-0">
+              <div className="panel p-4">
+                <div className="border-b border-[color:var(--line)] pb-2">
+                  <h4 className="text-sm font-extrabold">Kandidat alternatif</h4>
+                  <p className="mt-1 text-xs font-medium text-[#5B5B5B]">
+                    Pilih kandidat lain bila hasil visual utama tidak sesuai.
                   </p>
                 </div>
-                
-                <div className="grid grid-cols-1 gap-2.5 max-h-[190px] overflow-y-auto pr-1">
+
+                <div className="mt-3 grid max-h-[210px] grid-cols-1 gap-2.5 overflow-y-auto pr-1">
                   {[primaryResult, ...alternatives].map((alt) => (
-                    <div
+                    <label
                       key={alt.taxon_id}
                       onClick={() => {
                         triggerHaptic(50);
                         setSelectedTaxonId(alt.taxon_id);
                       }}
-                      className={`flex border rounded-lg overflow-hidden cursor-pointer bg-white transition-all ${
+                      className={`flex cursor-pointer items-center gap-3 border p-2 ${
                         selectedTaxonId === alt.taxon_id
-                          ? 'border-[#2E7D6F] ring-1 ring-[#2E7D6F] border-2 shadow-sm'
-                          : 'border-gray-200 hover:border-gray-400'
+                          ? 'border-[#2E7D6F] bg-[#2E7D6F]/5'
+                          : 'border-[color:var(--line)] hover:border-[#5B5B5B]'
                       }`}
                     >
-                      <div className="w-16 h-12 bg-gray-100 flex-shrink-0">
-                        <img
-                          src={alt.reference_images[0]}
-                          alt={alt.scientific_name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      
-                      <div className="p-2 flex-1 flex flex-col justify-between">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-[10px] font-black text-gray-900 truncate block w-28 leading-tight">
-                              {alt.scientific_name}
-                            </span>
-                            <span className="text-[8px] text-gray-500 truncate block w-28 leading-none mt-0.5">
-                              {alt.common_name_indonesian}
-                            </span>
-                          </div>
-                          <input
-                            type="radio"
-                            name="alternative-selection-list"
-                            checked={selectedTaxonId === alt.taxon_id}
-                            onChange={() => setSelectedTaxonId(alt.taxon_id)}
-                            className="text-[#2E7D6F] focus:ring-[#2E7D6F] h-3.5 w-3.5 mt-0.5"
-                          />
-                        </div>
-                      </div>
-                    </div>
+                      <img
+                        src={alt.reference_images[0]}
+                        alt={alt.scientific_name}
+                        className="h-12 w-16 flex-none border border-[color:var(--line)] object-cover"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-bold leading-tight">{alt.scientific_name}</span>
+                        <span className="mt-0.5 block truncate text-xs font-medium text-[#5B5B5B]">
+                          {alt.common_name_indonesian}
+                        </span>
+                      </span>
+                      <input
+                        type="radio"
+                        name="alternative-selection-list"
+                        checked={selectedTaxonId === alt.taxon_id}
+                        onChange={() => setSelectedTaxonId(alt.taxon_id)}
+                        className="h-4 w-4 flex-none accent-[#2E7D6F]"
+                      />
+                    </label>
                   ))}
                 </div>
               </div>
 
-              {/* Warning */}
-              <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex space-x-2">
-                <AlertCircle className="w-4 h-4 text-[#70020F] flex-shrink-0 mt-0.5" />
-                <p className="text-[9px] text-[#70020F] leading-normal font-semibold uppercase tracking-wide">
-                  <strong>Pemberitahuan Medis:</strong> Spesies yang dikonfirmasi akan dicatat dalam triage untuk panduan SABU.
+              <div className="flex items-start gap-2 border border-[#70020F]/25 bg-[#70020F]/5 p-3">
+                <AlertCircle className="mt-0.5 h-4 w-4 flex-none text-[#70020F]" aria-hidden="true" />
+                <p className="text-xs font-medium leading-relaxed text-[#70020F]">
+                  Spesies yang dikonfirmasi akan dicatat untuk panduan SABU pada tahap triage.
                 </p>
               </div>
 
-              {/* Actions */}
               <div className="space-y-2">
                 <button
                   onClick={handleProceedToTriage}
-                  className="w-full py-3.5 bg-[#2E7D6F] hover:bg-[#5A9A8F] text-white font-extrabold text-xs rounded-xl shadow-md transition-transform active:scale-95 duration-200 flex items-center justify-center space-x-2 uppercase tracking-wider"
+                  className="flex w-full items-center justify-center gap-2 bg-[#2E7D6F] py-3.5 text-sm font-bold text-white hover:bg-[#256a5e]"
                 >
-                  <span>Konfirmasi & Lanjut ke Triage</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span>Konfirmasi &amp; Lanjut ke Triage</span>
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </button>
-                
                 <button
                   onClick={() => {
                     triggerHaptic(50);
                     setStep('upload');
                   }}
-                  className="w-full py-2.5 border border-gray-300 text-gray-700 font-bold text-xs bg-white rounded-xl shadow-sm active:scale-95 transition-transform duration-200 uppercase tracking-wider"
+                  className="w-full border border-[color:var(--line)] py-3 text-sm font-bold text-[#1E1E1E] hover:bg-[#F5F5F5]"
                 >
-                  Ulangi Pengambilan Foto
+                  Ulangi pengambilan foto
                 </button>
               </div>
-
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

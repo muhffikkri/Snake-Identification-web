@@ -16,11 +16,9 @@ export default {
         greenBadge: '#388E3C',
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'Segoe UI', 'Roboto', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
-      animation: {
-        'pulse-slow': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-      }
     },
   },
   plugins: [],

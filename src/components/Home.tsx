@@ -10,6 +10,12 @@ interface HomeProps {
   onSetIncidentId: (id: string) => void;
 }
 
+function venomChip(venom: string) {
+  if (venom === 'NEUROTOXIC') return <span className="chip chip-neuro">Neurotoksik</span>;
+  if (venom === 'HEMOTOXIC') return <span className="chip chip-hemo">Hemotoksik</span>;
+  return <span className="chip chip-safe">Tidak berbisa</span>;
+}
+
 export default function Home({ onNavigate, onSetIncidentId }: HomeProps) {
   const {
     currentGPS,
@@ -24,14 +30,12 @@ export default function Home({ onNavigate, onSetIncidentId }: HomeProps) {
   const [simulatedProvince, setSimulatedProvince] = useState('DKI Jakarta');
   const [isLoadingSpecies, setIsLoadingSpecies] = useState<boolean>(true);
 
-  // Trigger haptic feedback
   const triggerHaptic = (duration: number) => {
     if ('vibrate' in navigator) {
       navigator.vibrate(duration);
     }
   };
 
-  // Check network state and seed coordinates
   useEffect(() => {
     updatePendingSyncCount();
 
@@ -47,11 +51,10 @@ export default function Home({ onNavigate, onSetIncidentId }: HomeProps) {
     }
   }, []);
 
-  // Update local species query based on coordinates / province
   useEffect(() => {
     const queryLocalSpecies = async () => {
       setIsLoadingSpecies(true);
-      
+
       let province = 'DKI Jakarta';
       if (currentGPS) {
         if (currentGPS.lat < -8.0 && currentGPS.lng > 115.0) {
@@ -96,11 +99,10 @@ export default function Home({ onNavigate, onSetIncidentId }: HomeProps) {
     queryLocalSpecies();
   }, [currentGPS]);
 
-  // Simulate obtaining new GPS coordinates
   const triggerGpsRefresh = () => {
     triggerHaptic(100);
     setGpsSimulated(true);
-    
+
     const locations = [
       { name: 'DKI Jakarta', lat: -6.2088, lng: 106.8456 },
       { name: 'Jawa Barat', lat: -6.9175, lng: 107.6191 },
@@ -108,7 +110,7 @@ export default function Home({ onNavigate, onSetIncidentId }: HomeProps) {
       { name: 'Bali', lat: -8.4095, lng: 115.1889 }
     ];
     const loc = locations[Math.floor(Math.random() * locations.length)];
-    
+
     logger.info('GPS', 'Refreshing satellite lock...');
 
     setTimeout(() => {
@@ -124,11 +126,10 @@ export default function Home({ onNavigate, onSetIncidentId }: HomeProps) {
     }, 900);
   };
 
-  // Emergency Button Handler
   const handleEmergencyTrigger = async () => {
     triggerHaptic(300);
     logger.warn('Clinical', 'PANIC BUTTON PRESSED - Immediate Emergency Protocol Activated!');
-    
+
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const osc = audioCtx.createOscillator();
@@ -195,149 +196,107 @@ export default function Home({ onNavigate, onSetIncidentId }: HomeProps) {
   };
 
   return (
-    <div className="flex flex-col min-h-[640px] bg-white text-[#1E1E1E] p-4 md:p-8">
-      
-      {/* Outer wrapper: splits into a beautiful 2-column layout on iPad/Desktop */}
-      <div className="md:grid md:grid-cols-12 md:gap-8 md:items-start flex-1 flex flex-col justify-between">
-        
-        {/* LEFT COLUMN: Brand logo & massive Panic Button */}
-        <div className="md:col-span-5 flex flex-col justify-center items-center py-4 md:py-8 h-full md:border-r md:border-gray-100 md:pr-8">
-          
-          {/* Brand Header Inside App */}
-          <div className="flex flex-col items-center justify-center space-y-2 mb-6 md:mb-10">
-            <div className="flex items-center space-x-1.5">
-              <div className="w-8 h-8 rounded-full bg-[#70020F] flex items-center justify-center border border-red-900 shadow">
-                <span className="text-white text-xs font-bold font-mono">!</span>
-              </div>
-              <span className="text-xl font-black tracking-tight text-[#1E1E1E]">
-                SnakeBite<span className="text-[#70020F]">AI</span>
-              </span>
-            </div>
-            <div className="text-center mt-2">
-              <h2 className="text-xs font-extrabold tracking-widest text-gray-900 uppercase">
-                STAY CALM.
-              </h2>
-              <h2 className="text-xs font-extrabold tracking-widest text-[#70020F] uppercase leading-none">
-                MINUTES MATTER.
-              </h2>
-            </div>
+    <div className="flex min-h-[640px] flex-col bg-white p-4 text-[#1E1E1E] md:p-8">
+      <div className="flex flex-1 flex-col justify-between md:grid md:grid-cols-12 md:items-start md:gap-8">
+        {/* Left: brand + panic control */}
+        <div className="flex h-full flex-col items-center justify-center py-4 md:col-span-5 md:border-r md:border-[color:var(--line)] md:py-8 md:pr-8">
+          <div className="mb-8 flex flex-col items-center text-center md:mb-10">
+            <span className="text-2xl font-extrabold tracking-tight">
+              SnakeBite<span className="text-[#70020F]">AI</span>
+            </span>
+            <h2 className="mt-3 text-sm font-extrabold tracking-wide">
+              STAY CALM. <span className="text-[#70020F]">MINUTES MATTER.</span>
+            </h2>
+            <p className="mt-1 text-xs font-medium text-[#5B5B5B]">Tetap tenang. Setiap menit berarti.</p>
           </div>
 
-          {/* Panic Button */}
-          <div className="flex flex-col items-center justify-center space-y-4 my-auto">
+          <div className="my-auto flex flex-col items-center gap-5">
             <button
               onClick={handleEmergencyTrigger}
-              className="w-44 h-44 md:w-52 md:h-52 rounded-full bg-[#70020F] hover:bg-[#8b0313] text-white flex flex-col items-center justify-center shadow-2xl border-4 border-white outline outline-4 outline-[#70020F]/20 pulse-emergency transition-transform active:scale-95 duration-300"
+              className="pulse-emergency flex h-44 w-44 flex-col items-center justify-center rounded-full border-4 border-white bg-[#70020F] text-white active:scale-[0.98] md:h-52 md:w-52"
               aria-label="Tombol Darurat (Panic Button)"
             >
-              <span className="text-2xl md:text-3xl font-black tracking-widest uppercase text-white font-sans">
-                PANIC
-              </span>
-              <span className="text-2xl md:text-3xl font-black tracking-widest uppercase text-white font-sans leading-none">
-                BUTTON
-              </span>
+              <span className="text-2xl font-extrabold tracking-wide md:text-3xl">PANIC</span>
+              <span className="text-2xl font-extrabold tracking-wide md:text-3xl">BUTTON</span>
             </button>
 
-            <div className="text-center pt-2">
-              <p className="text-xs font-extrabold tracking-wide text-gray-900 uppercase">
-                I AM BITTEN
-              </p>
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mt-0.5">
-                (START ASSESSMENT)
-              </p>
+            <div className="text-center">
+              <p className="text-sm font-extrabold">I AM BITTEN</p>
+              <p className="mt-1 text-xs font-medium text-[#5B5B5B]">Mulai penilaian darurat</p>
             </div>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Geospatial Local Snake Widget */}
-        <div className="md:col-span-7 w-full flex flex-col justify-start md:py-2 mt-6 md:mt-0">
-          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 shadow-sm h-full flex flex-col justify-between">
-            <div className="flex items-center justify-between border-b border-gray-200 pb-2.5 mb-4">
-              <div className="flex items-center space-x-1.5">
-                <Radio className="w-4 h-4 text-[#2E7D6F] animate-pulse" />
-                <h3 className="text-[10px] font-black text-gray-900 uppercase tracking-widest">
-                  Ular di Sekitar Anda
-                </h3>
+        {/* Right: local species widget */}
+        <div className="mt-6 flex w-full flex-col md:col-span-7 md:mt-0 md:py-2">
+          <section className="panel flex h-full flex-col p-4">
+            <div className="mb-4 flex items-center justify-between border-b border-[color:var(--line)] pb-3">
+              <div className="flex items-center gap-2">
+                <Radio className="h-4 w-4 text-[#2E7D6F]" aria-hidden="true" />
+                <h3 className="text-sm font-extrabold">Kemungkinan ular di lokasi Anda</h3>
               </div>
               <button
                 onClick={triggerGpsRefresh}
                 disabled={gpsSimulated}
-                className="text-[9px] font-extrabold bg-[#2E7D6F]/10 hover:bg-[#2E7D6F]/20 text-[#2E7D6F] px-2 py-1 rounded-md flex items-center space-x-1.5 transition-colors border border-[#2E7D6F]/20"
+                className="flex items-center gap-1.5 rounded-md border border-[color:var(--line)] px-2.5 py-1.5 text-xs font-bold text-[#2E7D6F] hover:bg-[#2E7D6F]/10 disabled:opacity-60"
               >
                 {gpsSimulated ? (
-                  <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                  <>
+                    <RefreshCw className="h-3 w-3 animate-spin" aria-hidden="true" />
+                    Memindai
+                  </>
                 ) : (
-                  <span>📍 {simulatedProvince}</span>
+                  simulatedProvince
                 )}
               </button>
             </div>
 
-            {/* Local Snake list: displays as a scroll bar on mobile, but as a grid on iPad/Desktop */}
-            <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 overflow-x-auto md:overflow-x-visible pb-2.5 md:pb-0 scrollbar-thin">
+            <div className="flex gap-3 overflow-x-auto pb-2.5 md:grid md:grid-cols-2 md:overflow-visible md:pb-0 lg:grid-cols-3">
               {isLoadingSpecies ? (
                 [1, 2, 3].map((n) => <CardSkeleton key={n} />)
               ) : localSpecies.length === 0 ? (
-                <div className="text-[10px] text-gray-500 text-center py-4 w-full">
-                  Gagal memuat peta taksa lokal.
-                </div>
+                <p className="w-full py-4 text-center text-sm font-medium text-[#5B5B5B]">
+                  Data taksa lokal belum tersedia.
+                </p>
               ) : (
                 localSpecies.map((sp) => (
-                  <div
+                  <article
                     key={sp.taxon_id}
-                    className="flex-shrink-0 w-36 md:w-auto bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col justify-between shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-300"
+                    className="panel flex w-40 flex-none flex-col overflow-hidden md:w-auto"
                   >
-                    {/* Snake Card Image */}
-                    <div className="h-20 w-full bg-gray-100 relative overflow-hidden">
+                    <div className="relative h-24 w-full overflow-hidden bg-[#F0F0F0]">
                       <img
                         src={sp.reference_images[0]}
                         alt={sp.scientific_name}
-                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                        className="h-full w-full object-cover"
                         loading="lazy"
                       />
-                      <div className="absolute top-1 left-1">
-                        <span className={`text-[7px] font-extrabold px-1.5 py-0.5 rounded text-white shadow-sm uppercase ${
-                          sp.venom_type === 'NEUROTOXIC' ? 'bg-[#70020F]' : 
-                          sp.venom_type === 'HEMOTOXIC' ? 'bg-[#F57C00]' : 'bg-[#388E3C]'
-                        }`}>
-                          {sp.venom_type.split('-')[0]}
+                    </div>
+                    <div className="flex flex-1 flex-col p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="text-sm font-extrabold leading-tight">{sp.scientific_name}</h4>
+                        <span className="whitespace-nowrap text-xs font-bold text-[#2E7D6F]">
+                          {(sp.confidence * 100).toFixed(0)}% KDE
                         </span>
                       </div>
+                      <p className="mt-0.5 text-xs font-medium italic text-[#5B5B5B]">
+                        {sp.common_name_indonesian}
+                      </p>
+                      <div className="mt-2">{venomChip(sp.venom_type)}</div>
+                      <p className="mt-3 border-t border-[color:var(--line)] pt-2 text-xs font-medium text-[#5B5B5B]">
+                        {sp.morphological_traits[0]}
+                      </p>
                     </div>
-
-                    {/* Card Content */}
-                    <div className="p-2.5 flex-1 flex flex-col justify-between">
-                      <div className="space-y-0.5">
-                        <div className="flex justify-between items-center">
-                          <h4 className="text-[10px] font-black text-gray-900 truncate w-[70%]">
-                            {sp.scientific_name}
-                          </h4>
-                          <span className="text-[8px] font-extrabold text-[#2E7D6F]">
-                            {(sp.confidence * 100).toFixed(0)}% KDE
-                          </span>
-                        </div>
-                        <p className="text-[8px] text-gray-500 truncate italic">
-                          {sp.common_name_indonesian}
-                        </p>
-                      </div>
-                      
-                      <div className="mt-3 border-t border-gray-100 pt-2">
-                        <p className="text-[7px] text-gray-400 font-bold uppercase tracking-wider">Ciri Utama:</p>
-                        <p className="text-[8px] text-gray-700 truncate font-semibold">
-                          {sp.morphological_traits[0]}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )
-              ))}
+                  </article>
+                ))
+              )}
             </div>
 
-            <div className="text-[8px] text-gray-400 mt-4 text-center font-bold uppercase tracking-widest leading-none">
-              100% OFFLINE DATASET • SATELIT LOCK ACTIVE
-            </div>
-          </div>
+            <p className="mt-4 text-center text-xs font-medium text-[#5B5B5B]">
+              Dataset 100% luring &middot; pembacaan satelit aktif
+            </p>
+          </section>
         </div>
-
       </div>
     </div>
   );
