@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter, Link, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Building2, Camera, LayoutDashboard, Map, Menu, X } from 'lucide-react';
+import { Building2, Camera, LayoutDashboard, Map } from 'lucide-react';
 import LandingPage from './components/LandingPage';
 import Home from './components/Home';
 import Identify from './components/Identify';
@@ -42,7 +42,6 @@ function ScrollToTop() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { networkStatus } = useAppStore();
-  const [menuOpen, setMenuOpen] = useState(false);
   const { pathname } = useLocation();
 
   // The landing page carries its own navigation, so the shell chrome is
@@ -69,58 +68,39 @@ function Shell({ children }: { children: React.ReactNode }) {
       </a>
 
       <header className="sticky top-0 z-50 border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-2.5">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5">
           <Link to="/" className="flex min-h-[44px] items-center gap-2.5" aria-label="SnakeBiteAI home">
             <img src="/Logo_1.webp" alt="" aria-hidden="true" className="h-6 w-6 object-contain" />
             <span className="text-sm font-semibold tracking-tight">SnakeBiteAI</span>
           </Link>
 
-          <div className="flex items-center gap-2.5">
-            <span role="status" className={`badge ${networkStatus === 'online' ? 'badge-success' : 'badge-warning'}`}>
-              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
-              {networkStatus === 'online' ? 'Online' : 'Offline, ready'}
-            </span>
-            <button
-              type="button"
-              onClick={() => setMenuOpen((open) => !open)}
-              aria-expanded={menuOpen}
-              aria-controls="app-navigation"
-              aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-              className="btn btn-secondary min-w-[44px] justify-center px-3"
-            >
-              {menuOpen ? <X className="h-4 w-4" aria-hidden="true" /> : <Menu className="h-4 w-4" aria-hidden="true" />}
-              <span className="hidden sm:inline">{menuOpen ? 'Close' : 'Menu'}</span>
-              <span className="sr-only sm:hidden">{menuOpen ? 'Close navigation menu' : 'Open navigation menu'}</span>
-            </button>
-          </div>
+          <nav aria-label="Main" className="order-3 w-full sm:order-2 sm:w-auto">
+            <ul className="flex flex-wrap items-center gap-x-1 gap-y-1 sm:gap-x-1">
+              {APP_NAV.map((item) => (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    end={item.end}
+                    className={({ isActive }) =>
+                      `flex min-h-[44px] items-center gap-2 rounded-md px-3 text-[13px] font-semibold transition-colors sm:text-sm ${
+                        isActive ? 'bg-brand-50 text-brand' : 'text-ink-secondary hover:bg-surface-secondary hover:text-ink'
+                      }`
+                    }
+                  >
+                    <item.icon className="h-4 w-4 flex-none" aria-hidden="true" />
+                    <span className="whitespace-nowrap">{item.label}</span>
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <span role="status" className={`order-2 sm:order-3 badge ${networkStatus === 'online' ? 'badge-success' : 'badge-warning'}`}>
+            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+            {networkStatus === 'online' ? 'Online' : 'Offline, ready'}
+          </span>
         </div>
       </header>
-
-      <nav
-        id="app-navigation"
-        aria-label="Main"
-        className={`border-b border-line bg-surface ${menuOpen ? 'block' : 'hidden'}`}
-      >
-        <ul className="mx-auto flex max-w-5xl flex-col px-2 pb-3 sm:flex-row sm:flex-wrap sm:px-4">
-          {APP_NAV.map((item) => (
-            <li key={item.to}>
-              <NavLink
-                to={item.to}
-                end={item.end}
-                onClick={() => setMenuOpen(false)}
-                className={({ isActive }) =>
-                  `flex min-h-[44px] w-full items-center gap-2.5 rounded-md px-3 text-sm font-semibold transition-colors sm:w-auto ${
-                    isActive ? 'bg-brand-50 text-brand' : 'text-ink-secondary hover:bg-surface-secondary hover:text-ink'
-                  }`
-                }
-              >
-                <item.icon className="h-4 w-4" aria-hidden="true" />
-                {item.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </nav>
 
       <main id="main" className="flex-1">
         {children}
@@ -183,6 +163,7 @@ function AppRoutes() {
             onIdentify={() => navigate('/identify')}
             onTriage={() => navigate('/triage')}
             onGovernment={() => navigate('/government')}
+            onDiscover={() => navigate('/discover')}
           />
         }
       />

@@ -1,4 +1,4 @@
-import { ArrowRight, Ban, HelpCircle, ClipboardList, Radio } from 'lucide-react';
+import { ArrowRight, Ban, HelpCircle, ClipboardList, Map, Radio } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Card } from './ui/Primitives';
 
@@ -6,6 +6,7 @@ interface LandingProps {
   onIdentify: () => void;
   onTriage: () => void;
   onGovernment: () => void;
+  onDiscover: () => void;
 }
 
 /** Kept from the existing copy. WHO burden figures attributed, not invented. */
@@ -127,9 +128,10 @@ function initials(name: string) {
 }
 
 /**
- * 3D card carousel: three reference photographs tilted in perspective, the
- * active one facing forward, the others fanned behind it. Advances every 3 s;
- * a dot click restarts the timer at the chosen card.
+ * 3D card carousel: three reference photographs, each sliding in from the
+ * right and exiting to the left through the centre of the container. The card
+ * fills the full container width/height, so the left and right margins are
+ * equal. Advances every 5 s; a dot click restarts the timer at the chosen card.
  */
 function HeroCarousel() {
   const [active, setActive] = useState(0);
@@ -138,7 +140,7 @@ function HeroCarousel() {
   useEffect(() => {
     const id = window.setInterval(() => {
       setActive((prev) => (prev + 1) % HERO_IMAGES.length);
-    }, 3000);
+    }, 5000);
     return () => window.clearInterval(id);
   }, []);
 
@@ -147,7 +149,7 @@ function HeroCarousel() {
     if (intervalId !== null) window.clearInterval(intervalId);
     const id = window.setInterval(() => {
       setActive((prev) => (prev + 1) % HERO_IMAGES.length);
-    }, 3000);
+    }, 5000);
     setIntervalId(id);
   }
 
@@ -155,35 +157,35 @@ function HeroCarousel() {
 
   return (
     <div role="group" aria-label="Reference species photographs">
-      <div className="relative h-52 w-64 sm:h-60 sm:w-72" style={{ perspective: '900px' }}>
+      <div className="relative h-64 w-full sm:h-80 md:h-full md:min-h-[22rem]" style={{ perspective: '900px' }}>
         {HERO_IMAGES.map((img, i) => {
-          // offset is -1, 0, or 1 around the active index (wrap-aware)
-          let offset = i - active;
-          if (offset > HERO_IMAGES.length / 2) offset -= HERO_IMAGES.length;
-          if (offset < -HERO_IMAGES.length / 2) offset += HERO_IMAGES.length;
-          const isActive = offset === 0;
+          // position is -1 (left, exiting), 0 (centre), or 1 (right, entering)
+          let position = i - active;
+          if (position > HERO_IMAGES.length / 2) position -= HERO_IMAGES.length;
+          if (position < -HERO_IMAGES.length / 2) position += HERO_IMAGES.length;
+          const isCenter = position === 0;
           return (
             <figure
               key={img.src}
               className="card absolute inset-0 overflow-hidden"
               style={{
-                transform: `translateZ(${isActive ? 60 : -40}px) rotateY(${offset * 18}deg) scale(${isActive ? 1 : 0.92})`,
-                transition: 'transform 0.6s ease, opacity 0.6s ease',
-                opacity: isActive ? 1 : 0.45,
-                zIndex: isActive ? 20 : 10,
-                transformStyle: 'preserve-3d',
+                transform: `translateX(${position * 100}%) scale(${isCenter ? 1 : 0.96})`,
+                transition: 'transform 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.7s ease',
+                opacity: isCenter ? 1 : 0,
+                zIndex: isCenter ? 20 : 10,
+                pointerEvents: isCenter ? 'auto' : 'none',
               }}
             >
               <img
                 src={img.src}
-                alt={isActive ? `${img.species}. ${img.note}` : ''}
+                alt={isCenter ? `${img.species}. ${img.note}` : ''}
                 className="h-full w-full object-cover"
-                loading={isActive ? 'eager' : 'lazy'}
+                loading={isCenter ? 'eager' : 'lazy'}
               />
-              {isActive && (
-                <figcaption className="absolute inset-x-0 bottom-0 border-t border-line bg-surface/85 px-4 py-3.5 backdrop-blur-sm">
-                  <p className="text-[15px] font-semibold text-ink">{img.species}</p>
-                  <p className="mt-0.5 text-[13px] leading-snug text-ink-secondary">{img.note}</p>
+              {isCenter && (
+                <figcaption className="absolute inset-x-0 bottom-0 border-t border-line bg-surface/85 px-5 py-4 backdrop-blur-sm">
+                  <p className="text-[16px] font-semibold text-ink">{img.species}</p>
+                  <p className="mt-1 text-sm leading-snug text-ink-secondary">{img.note}</p>
                 </figcaption>
               )}
             </figure>
@@ -205,13 +207,13 @@ function HeroCarousel() {
       </div>
       <p className="sr-only">
         Currently showing {activeImg.species}. The carousel advances to the next reference photograph every
-        three seconds.
+        five seconds.
       </p>
     </div>
   );
 }
 
-export default function Landing({ onIdentify, onTriage, onGovernment }: LandingProps) {
+export default function Landing({ onIdentify, onTriage, onGovernment, onDiscover }: LandingProps) {
   return (
     <div className="bg-canvas">
       <nav
@@ -225,16 +227,23 @@ export default function Landing({ onIdentify, onTriage, onGovernment }: LandingP
           </a>
 
           {/* The old section-anchor nav (The problem / How it works / Development
-              plan / Team) is replaced by the two tool entry points; sign in and
+              plan / Team) is replaced by the four tool entry points; sign in and
               register are disabled for now, so Demo Dashboard takes the primary
               button slot. */}
-          <div className="hidden items-center gap-6 lg:flex">
+          <div className="hidden items-center gap-5 lg:flex">
             <button
               type="button"
               onClick={onIdentify}
               className="flex min-h-[44px] items-center text-sm font-medium text-ink-secondary hover:text-ink"
             >
               Identify a Snake
+            </button>
+            <button
+              type="button"
+              onClick={onDiscover}
+              className="flex min-h-[44px] items-center text-sm font-medium text-ink-secondary hover:text-ink"
+            >
+              Discover
             </button>
             <button
               type="button"
@@ -262,8 +271,8 @@ export default function Landing({ onIdentify, onTriage, onGovernment }: LandingP
       </nav>
 
       <header id="top" className="mx-auto max-w-6xl px-4 pb-14 pt-10 sm:px-6 sm:pb-20 sm:pt-14">
-        <div className="md:grid md:grid-cols-12 md:items-center md:gap-12">
-          <div className="md:col-span-7">
+        <div className="md:grid md:grid-cols-12 md:items-stretch md:gap-12">
+          <div className="flex flex-col justify-center md:col-span-5">
             <p className="overline">SnakeBiteAI</p>
             <h1 className="mt-3 text-[34px] font-bold leading-[1.1] tracking-tight text-ink sm:text-5xl lg:text-[56px]">
               When minutes matter,
@@ -290,8 +299,9 @@ export default function Landing({ onIdentify, onTriage, onGovernment }: LandingP
           </div>
 
           {/* 3D reference-specimen carousel: real photographs from the reference
-              set, rotating every 3 seconds, replacing the single static shot. */}
-          <div className="mt-10 md:col-span-5 md:mt-0">
+              set, sliding in from the right and out to the left every 5 seconds.
+              Stretches to the full column so the card has equal side margins. */}
+          <div className="mt-10 md:col-span-7 md:mt-0">
             <HeroCarousel />
           </div>
         </div>
@@ -421,23 +431,21 @@ export default function Landing({ onIdentify, onTriage, onGovernment }: LandingP
       <section id="collaborators" className="border-t border-line bg-surface">
         <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14">
           <p className="overline">Global health system and academic collaborators</p>
-          <ul className="mt-6 flex flex-wrap gap-x-10 gap-y-6">
+          <ul className="mt-8 flex flex-wrap justify-start gap-x-12 gap-y-10 sm:justify-center">
             {COLLABORATORS.map((org) => (
-              <li key={org.name} className="flex items-center gap-3">
+              <li key={org.name} className="flex w-40 flex-col items-center text-center">
                 <img
                   src={org.logo}
                   alt=""
                   aria-hidden="true"
-                  className="h-8 w-8 flex-none rounded-md object-contain"
+                  className="h-14 w-14 flex-none rounded-md object-contain"
                 />
-                <div>
-                  <p className="text-sm font-semibold text-ink">{org.name}</p>
-                  <p className="mt-0.5 text-[13px] text-ink-muted">{org.note}</p>
-                </div>
+                <p className="mt-3 text-sm font-semibold leading-snug text-ink">{org.name}</p>
+                <p className="mt-1 text-[13px] text-ink-muted">{org.note}</p>
               </li>
             ))}
           </ul>
-          <p className="mt-8 max-w-3xl text-[13px] leading-relaxed text-ink-secondary">
+          <p className="mx-auto mt-10 max-w-3xl text-center text-[13px] leading-relaxed text-ink-secondary">
             These organisations are named as part of the team&apos;s support and reference network from the HSIL
             Hackathon 2026 in Bandung. Listing them here is not a statement of formal partnership or endorsement.
           </p>
@@ -461,6 +469,13 @@ export default function Landing({ onIdentify, onTriage, onGovernment }: LandingP
               className="flex min-h-[44px] items-center text-left text-[13px] font-medium text-white hover:underline"
             >
               Identify a Snake
+            </button>
+            <button
+              type="button"
+              onClick={onDiscover}
+              className="flex min-h-[44px] items-center text-left text-[13px] font-medium text-white hover:underline"
+            >
+              Discover
             </button>
             <button
               type="button"
