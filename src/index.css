@@ -213,6 +213,12 @@ section {
     background: var(--color-surface-secondary);
     color: var(--color-text-muted);
   }
+  /* Native <select> popups can't keep the rounded border radius; keep the closed
+     control's border constant so opening the dropdown doesn't look "squared off". */
+  .field:focus,
+  .field:focus-visible {
+    border-color: var(--color-brand);
+  }
 
   /*
     Risk and status labels. Every label carries an explicit word, so colour is

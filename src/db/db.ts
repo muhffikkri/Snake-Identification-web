@@ -114,9 +114,9 @@ const INITIAL_SPECIES: SnakeSpecies[] = [
     kde_params: { bandwidth: 2.0, n_observations: 350, mean_lat: -4.5, mean_lng: 138.0 },
     clinical_priority: 5,
     reference_images: [
-      '/dataset/Acanthophis_laevis_obs121339246_photo205315764.jpg',
-      '/dataset/Acanthophis_laevis_obs137275705_photo234421463.jpg',
-      '/dataset/Acanthophis_laevis_obs19025516_photo29178993.jpg',
+      'https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Acanthophis_laevis/Acanthophis_laevis_obs121339246_photo205315764.webp',
+      'https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Acanthophis_laevis/Acanthophis_laevis_obs137275705_photo234421463.webp',
+      'https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Acanthophis_laevis/Acanthophis_laevis_obs19025516_photo29178993.webp',
     ],
     morphological_traits: [
       'Short, stout body',
@@ -138,8 +138,8 @@ const INITIAL_SPECIES: SnakeSpecies[] = [
     kde_params: { bandwidth: 2.0, n_observations: 480, mean_lat: -2.5, mean_lng: 110.0 },
     clinical_priority: 1,
     reference_images: [
-      '/dataset/Ahaetulla_fasciolata_obs202932892_photo358471931.jpg',
-      '/dataset/Ahaetulla_fasciolata_obs310503736_photo560406804.jpg',
+      'https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Ahaetulla_fasciolata/Ahaetulla_fasciolata_obs202932892_photo358471931.webp',
+      'https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Ahaetulla_fasciolata/Ahaetulla_fasciolata_obs310503736_photo560406804.webp',
     ],
     morphological_traits: [
       'Long, pointed head',
@@ -159,7 +159,7 @@ const INITIAL_SPECIES: SnakeSpecies[] = [
     geo_bbox: { latMin: -11.0, latMax: 6.0, lngMin: 95.0, lngMax: 141.0 },
     kde_params: { bandwidth: 2.0, n_observations: 2400, mean_lat: -2.0, mean_lng: 115.0 },
     clinical_priority: 1,
-    reference_images: ['/dataset/Ahaetulla_prasina_0003.jpg'],
+    reference_images: ['https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Ahaetulla_prasina/Ahaetulla_prasina_0003.webp'],
     morphological_traits: [
       'Very slender bright green body',
       'Long pointed snout',
@@ -178,7 +178,7 @@ const INITIAL_SPECIES: SnakeSpecies[] = [
     geo_bbox: { latMin: -9.0, latMax: 6.0, lngMin: 95.0, lngMax: 116.0 },
     kde_params: { bandwidth: 2.0, n_observations: 150, mean_lat: -6.0, mean_lng: 106.0 },
     clinical_priority: 1,
-    reference_images: ['/dataset/Ahaetulla_rufusoculara_obs252803925_photo456126350.jpg'],
+    reference_images: ['https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Ahaetulla_rufusoculara/Ahaetulla_rufusoculara_obs252803925_photo456126350.webp'],
     morphological_traits: [
       'Red iris',
       'Elongate slender body',
@@ -191,7 +191,7 @@ const INITIAL_SPECIES: SnakeSpecies[] = [
 
 export async function seedSpeciesDatabase() {
   const stored = await db.species.toArray();
-  if (stored.length > 0 && stored[0].reference_images[0]?.startsWith('/dataset/')) {
+  if (stored.length > 0 && stored[0].reference_images[0]?.startsWith('https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference')) {
     return;
   }
   if (stored.length > 0) {

@@ -50,7 +50,7 @@ describe('GovernmentDashboard', () => {
 
   it('states that the figures cover this device, not the country', () => {
     render(<GovernmentDashboard />);
-    expect(screen.getByText(/computed from assessment records held on this device/i)).toBeInTheDocument();
+    expect(screen.getByText(/the records shown here are held on this device/i)).toBeInTheDocument();
   });
 
   it('leads the overview with the critical share', async () => {

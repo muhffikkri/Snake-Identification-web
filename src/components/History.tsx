@@ -14,7 +14,7 @@ export default function History({ onBack }: HistoryProps) {
 
   if (incidents.loading) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <p role="status" className="text-sm text-ink-secondary">
           Reading your local record
         </p>
@@ -25,7 +25,7 @@ export default function History({ onBack }: HistoryProps) {
 
   if (incidents.error) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <ErrorState
           title="Your history could not be read"
           body={incidents.error}
@@ -42,7 +42,7 @@ export default function History({ onBack }: HistoryProps) {
   const mine = ownedIncidents(incidents.data ?? [], account?.name ?? null);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <button type="button" onClick={onBack} className="btn btn-tertiary -ml-2 mb-4 px-2">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Back

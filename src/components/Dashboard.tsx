@@ -14,7 +14,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   if (incidents.loading || species.loading) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <p role="status" className="text-sm text-ink-secondary">
           Reading your local record
         </p>
@@ -25,7 +25,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   if (incidents.error) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6 sm:py-6">
+      <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
         <ErrorState
           title="Your local record could not be read"
           body={incidents.error}
@@ -43,7 +43,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const venomous = new Set(mine.filter((i) => i.details.species_prediction.risk !== 'NON-VENOMOUS'));
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <SectionTitle
         as="h1"
         overline={account ? `Signed in as ${account.name}` : 'Signed out'}

@@ -62,7 +62,7 @@ export default function SpeciesDetail({ slug, onBack }: SpeciesProps) {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <p role="status" className="text-sm text-ink-secondary">
           Reading the reference set
         </p>
@@ -73,7 +73,7 @@ export default function SpeciesDetail({ slug, onBack }: SpeciesProps) {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <ErrorState title="The reference set could not be read" body={error} />
       </div>
     );
@@ -81,7 +81,7 @@ export default function SpeciesDetail({ slug, onBack }: SpeciesProps) {
 
   if (!entry) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <EmptyState
           title="That species is not in the reference set"
           body="It may have been removed, or the identifier was wrong. Go back to the species list and pick another entry."
@@ -98,7 +98,7 @@ export default function SpeciesDetail({ slug, onBack }: SpeciesProps) {
   const image = entry.image_path ? imageSrc(entry.image_path) : undefined;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <button type="button" onClick={onBack} className="btn btn-tertiary -ml-2 mb-4 px-2">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Back

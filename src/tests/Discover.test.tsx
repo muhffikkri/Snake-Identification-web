@@ -10,7 +10,7 @@ const mockSpecies = [
     common_name_en: 'Death Adder',
     common_name_local: 'Ular Kematian',
     venom_type: 'NEUROTOXIC',
-    image_path: '/dataset/a.jpg',
+    image_path: 'Acanthophis_laevis/a.jpg',
     observation_count: 5,
   },
   {
@@ -19,7 +19,7 @@ const mockSpecies = [
     common_name_en: 'Oriental Whip Snake',
     common_name_local: 'Ular Pucuk Hijau',
     venom_type: 'NON-VENOMOUS',
-    image_path: '/dataset/b.jpg',
+    image_path: 'Ahaetulla_prasina/b.jpg',
     observation_count: 3,
   },
 ];

@@ -661,10 +661,24 @@ export default function GovernmentDashboard() {
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <SectionTitle
         as="h1"
-        overline="Government surveillance"
-        title="Snakebite records across Indonesia"
-        lede="Everything on this screen is computed from assessment records held on this device. Figures cover what has been collected so far, not the whole country."
+        overline="Demo dashboard"
+        title="Every assessment recorded so far"
+        lede="This screen pulls together all of the snakebite assessments captured through the Identify and Triage flow, so the clinical team can review them in one place. It is a demo — the records shown here are held on this device and have not yet been synced to a central server."
       />
+
+      <Card className="mt-5 p-5">
+        <p className="overline text-brand">Offline first, then in sync</p>
+        <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
+          Assessments are recorded on the device the moment they are completed, with or without a network connection.
+          When the device is back in range of the internet, it delivers the pending records automatically through the
+          Data and reports tab below. The figures on this screen reflect only what this device has recorded; a
+          deployed build would aggregate records from every clinic that submits them.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-ink-secondary">
+          This view is built for the clinical staff who are responsible for treating the cases in the queue. It is
+          not a patient-facing screen, and nothing on it should be read as a diagnosis.
+        </p>
+      </Card>
 
       <div className="mt-6 border-b border-line">
         <nav aria-label="Government sections">
@@ -697,8 +711,8 @@ export default function GovernmentDashboard() {
       </div>
 
       <p className="mt-8 text-[13px] leading-relaxed text-ink-secondary">
-        This prototype keeps all data on the device. A deployed version would receive these records from provincial
-        facilities over a secure connection.
+        Records that have not yet been delivered stay on the device until a connection is available. Use the
+        Data and reports tab to check the sync queue or to trigger delivery by hand.
       </p>
     </div>
   );
