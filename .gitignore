@@ -42,5 +42,6 @@ spatio_visual_snake_models.pkl
 .agents/
 .hermes/
 skills-lock.json
+.vercel/
 opencode.json
 .neon

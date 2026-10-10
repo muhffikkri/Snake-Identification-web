@@ -3,44 +3,37 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Home from '../components/Home';
 import { useAppStore } from '../store/store';
 
-// vi.mock is hoisted, so the fixture has to live inside the factory.
-vi.mock('../db/db', () => {
-  const species = [
-    {
-      taxon_id: 0,
-      scientific_name: 'Acanthophis laevis',
-      common_name: 'Smooth-scaled Death Adder',
-      common_name_local: 'Ular Kematian Papua',
-      venom_type: 'NEUROTOXIC',
-      geo_bbox: { latMin: -9, latMax: -1, lngMin: 130, lngMax: 141 },
-      kde_params: { bandwidth: 2, n_observations: 350, mean_lat: -4.5, mean_lng: 138 },
-      clinical_priority: 5,
-      reference_images: ['/dataset/Acanthophis_laevis_obs121339246_photo205315764.jpg'],
-      morphological_traits: ['Short, stout body'],
-      habitat: 'Lowland forest',
-      venom_notes: 'Potent neurotoxic venom.',
-    },
-  ];
-  return {
-    db: {
-      species: {
-        toArray: vi.fn().mockResolvedValue(species),
-        count: vi.fn().mockResolvedValue(species.length),
-      },
-      incidents: {
-        where: vi.fn().mockReturnValue({
-          equals: vi.fn().mockReturnValue({
-            toArray: vi.fn().mockResolvedValue([]),
-          }),
-        }),
-      },
-    },
-    getIncidentLog: vi.fn().mockResolvedValue(null),
-    upsertIncident: vi.fn().mockResolvedValue(undefined),
-  };
-});
+// Home loads species from the Neon catalogue; mock the Neon layer so the
+// region-filtering tests stay deterministic and offline.
+vi.mock('../lib/neon', () => ({
+  fetchSpeciesPage: vi.fn(),
+  imageSrc: (p: string) => p,
+  PAGE_SIZE: 24,
+}));
+
+import { fetchSpeciesPage } from '../lib/neon';
 
 const mockNavigate = vi.fn();
+const mockedFetch = fetchSpeciesPage as unknown as ReturnType<typeof vi.fn>;
+
+function mockSpeciesPage(obsCount: number, slug = 'sp-1') {
+  mockedFetch.mockResolvedValue({
+    items: [
+      {
+        slug,
+        scientific_name: 'Acanthophis laevis',
+        common_name_en: 'Smooth-scaled Death Adder',
+        common_name_local: 'Ular Kematian Papua',
+        venom_type: 'NEUROTOXIC',
+        image_path: '',
+        observation_count: obsCount,
+      },
+    ],
+    total: 1,
+    page: 1,
+    pages: 1,
+  });
+}
 
 function renderHome() {
   return render(<Home onNavigate={mockNavigate} />);
@@ -53,6 +46,7 @@ describe('Home', () => {
   });
 
   it('leads with the triage action before identification', async () => {
+    mockSpeciesPage(0);
     renderHome();
 
     const triage = screen.getByRole('button', { name: /start triage assessment/i });
@@ -64,6 +58,7 @@ describe('Home', () => {
   });
 
   it('navigates to triage without requiring an account', () => {
+    mockSpeciesPage(0);
     useAppStore.setState({ account: null });
     renderHome();
 
@@ -73,6 +68,7 @@ describe('Home', () => {
   });
 
   it('routes to identification from the identify action', () => {
+    mockSpeciesPage(0);
     renderHome();
 
     screen.getByRole('button', { name: /identify a snake/i }).click();
@@ -81,6 +77,7 @@ describe('Home', () => {
   });
 
   it('names species recorded for the detected region', async () => {
+    mockSpeciesPage(5);
     // Central Java is inside the Java region polygon.
     useAppStore.setState({ gps: { lat: -7.2575, lng: 112.7521, accuracy: 10, timestamp: 1 } });
     renderHome();
@@ -88,9 +85,11 @@ describe('Home', () => {
     await waitFor(() => {
       expect(screen.getByText(/Recorded in Jawa/i)).toBeInTheDocument();
     });
+    expect(await screen.findByText(/Acanthophis laevis/i)).toBeInTheDocument();
   });
 
   it('explains an empty regional result instead of showing a blank card', async () => {
+    mockSpeciesPage(0);
     useAppStore.setState({ gps: { lat: -3.5, lng: 128.5, accuracy: 10, timestamp: 1 } });
     renderHome();
 

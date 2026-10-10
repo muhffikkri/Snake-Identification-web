@@ -2,10 +2,11 @@
  * SnakeBiteAI — full upload pipeline
  *
  * Usage:
- *   node scripts/upload_all.mjs            # everything (DDL + data + images)
- *   node scripts/upload_all.mjs --data     # DDL + tables only
- *   node scripts/upload_all.mjs --images   # images only (tables must exist)
- *   node scripts/upload_all.mjs --dry      # verify counts, no writes
+ *   node scripts/upload_all.mjs              # everything (DDL + data + images)
+ *   node scripts/upload_all.mjs --data       # DDL + tables only
+ *   node scripts/upload_all.mjs --images     # images only (tables must exist)
+ *   node scripts/upload_all.mjs --wipe       # delete bucket objects before upload
+ *   node scripts/upload_all.mjs --dry        # verify counts, no writes
  */
 import pg from 'pg';
 import dotenv from 'dotenv';
@@ -191,7 +192,6 @@ async function loadImages(pool, data, speciesIdMap) {
 // ── 5. upload webp files to Neon Object Storage ───────────────────────────────
 async function uploadImages(data) {
   const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
-
   const s3 = new S3Client({
     region: process.env.AWS_REGION,
     endpoint: process.env.AWS_ENDPOINT_URL_S3,
@@ -203,7 +203,30 @@ async function uploadImages(data) {
     requestChecksumCalculation: 'WHEN_REQUIRED',
   });
 
-  const { ListObjectsV2Command } = await import('@aws-sdk/client-s3');
+  const { ListObjectsV2Command, DeleteObjectsCommand } = await import('@aws-sdk/client-s3');
+
+  // Optional --wipe: delete all existing objects under reference/ before re-upload.
+  if (flags.has('--wipe')) {
+    log('s3', 'wiping existing objects under reference/ ...');
+    let wipeKey = null;
+    let wiped = 0;
+    while (true) {
+      const r = await s3.send(new ListObjectsV2Command({
+        Bucket: BUCKET, Prefix: 'reference/', ContinuationToken: wipeKey, MaxKeys: 1000,
+      }));
+      const objs = r.Contents ?? [];
+      for (const o of objs) wiped++;
+      if (objs.length > 0) {
+        await s3.send(new DeleteObjectsCommand({
+          Bucket: BUCKET,
+          Delete: { Objects: objs.map(o => ({ Key: o.Key })) },
+        }));
+      }
+      if (!r.IsTruncated) break;
+      wipeKey = r.NextContinuationToken;
+    }
+    log('s3', `wiped ${wiped} objects`);
+  }
 
   // 1. List what's already in the bucket (idempotent re-runs)
   const existing = new Set();
@@ -243,6 +266,7 @@ async function uploadImages(data) {
       Key: `reference/${relPath}`,
       Body: body,
       ContentType: 'image/webp',
+      ACL: 'public-read',
     }));
   }
 

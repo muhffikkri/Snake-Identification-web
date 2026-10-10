@@ -22,6 +22,7 @@ export function useNeonSpeciesPage(): {
   loading: boolean;
   error: string | null;
   loadMore: () => void;
+  goToPage: (pageNum: number) => void;
   reset: () => void;
 } {
   const [state, setState] = useState<{
@@ -107,7 +108,27 @@ export function useNeonSpeciesPage(): {
     });
   }
 
-  return { ...state, loadMore, reset };
+  /** Jump to a numbered page. Replaces the visible set with that page's results so
+   * the list stays bounded regardless of navigation order. */
+  function goToPage(pageNum: number) {
+    const clamped = Math.max(1, Math.min(pageNum, Math.max(state.pages, 1)));
+    if (clamped === state.page && state.items.length > 0) return;
+    setState((s) => ({ ...s, loading: true }));
+    void fetchSpeciesPage(clamped).then((p) => {
+      setState({
+        page: p.page,
+        pages: p.pages,
+        total: p.total,
+        items: p.items,
+        loading: false,
+        error: null,
+      });
+    }).catch((e) => {
+      setState((s) => ({ ...s, loading: false, error: e instanceof Error ? e.message : String(e) }));
+    });
+  }
+
+  return { ...state, loadMore, goToPage, reset };
 }
 
 /**

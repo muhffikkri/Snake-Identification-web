@@ -1,10 +1,10 @@
-import { useMemo, useRef } from 'react';
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
+import { useState } from 'react';
 import { LocateFixed, Search } from 'lucide-react';
 import { useAppStore, DEFAULT_GPS } from '../store/store';
 import { REGIONS, nearestRegion, regionAt, type Region } from '../lib/regions';
 import { VENOM } from '../lib/clinical';
-import { useNeonSpeciesPage, useLazyLoadSentinel, PAGE_SIZE } from '../lib/useNeonSpecies';
+import { useNeonSpeciesPage } from '../lib/useNeonSpecies';
 import { imageSrc, type SpeciesItem } from '../lib/neon';
 import { Badge, Card, EmptyState, ErrorState, SectionTitle } from './ui/Primitives';
 
@@ -32,7 +32,7 @@ export function SpeciesCardSkeleton({ count = 4 }: { count?: number }) {
 
 export default function Discover({ onOpenSpecies }: DiscoverProps) {
   const { gps, setGPS, networkStatus } = useAppStore();
-  const { items, total, pages, page, loading, error, loadMore, reset } = useNeonSpeciesPage();
+  const { items, total, pages, page, loading, error, goToPage } = useNeonSpeciesPage();
 
   const [pickedRegion, setPickedRegion] = useState<Region | null>(null);
   const [query, setQuery] = useState('');
@@ -81,8 +81,6 @@ export default function Discover({ onOpenSpecies }: DiscoverProps) {
         image: s.image_path ? imageSrc(s.image_path) : '',
       }));
   }, [items, query]);
-
-  const sentinelRef = useLazyLoadSentinel(loadMore, !loading && page < pages && query === '');
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
@@ -225,14 +223,88 @@ export default function Discover({ onOpenSpecies }: DiscoverProps) {
           </ul>
         )}
 
-        {!loading && query === '' && page < pages && (
-          <div ref={sentinelRef} className="flex justify-center py-6">
-            <button type="button" onClick={loadMore} className="btn btn-tertiary">
-              {loading ? 'Loading…' : `Load more (${total - (page * PAGE_SIZE)} remaining)`}
-            </button>
-          </div>
+        {!loading && query === '' && (
+          <PaginationNav page={page} pages={pages} total={total} onPage={goToPage} />
         )}
       </div>
     </div>
+  );
+}
+
+/** Numbered page controls. Replaces the infinite-scroll "Load more" sentinel so
+ * the discover list is navigable on a slow connection and screen readers can
+ * announce the available pages. */
+function PaginationNav({ page, pages, total, onPage }: {
+  page: number;
+  pages: number;
+  total: number;
+  onPage: (n: number) => void;
+}) {
+  // Only render a window of page numbers around the current one, plus first/last.
+  const windowSize = 2;
+  const start = Math.max(1, page - windowSize);
+  const end = Math.min(pages, page + windowSize);
+  const numbers: (number | 'ellipsis')[] = [];
+  if (start > 1) {
+    numbers.push(1);
+    if (start > 2) numbers.push('ellipsis');
+  }
+  for (let i = start; i <= end; i++) numbers.push(i);
+  if (end < pages) {
+    if (end < pages - 1) numbers.push('ellipsis');
+    numbers.push(pages);
+  }
+
+  const label = (n: number) => `Go to page ${n}`;
+
+  return (
+    <nav
+      aria-label="Species reference pages"
+      className="mt-6 flex flex-wrap items-center justify-center gap-1.5"
+    >
+      <button
+        type="button"
+        onClick={() => onPage(Math.max(1, page - 1))}
+        disabled={page <= 1}
+        aria-label="Previous page"
+        className="btn btn-secondary min-w-[44px] justify-center text-[13px]"
+      >
+        Prev
+      </button>
+      {numbers.map((n, i) =>
+        n === 'ellipsis' ? (
+          <span key={`e-${i}`} aria-hidden="true" className="text-[13px] text-ink-muted">
+            …
+          </span>
+        ) : (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onPage(n)}
+            aria-current={n === page ? 'page' : undefined}
+            aria-label={label(n)}
+            className={`min-w-[44px] justify-center text-[13px] ${
+              n === page
+                ? 'btn btn-tertiary font-semibold text-brand'
+                : 'btn btn-secondary'
+            }`}
+          >
+            {n}
+          </button>
+        ),
+      )}
+      <button
+        type="button"
+        onClick={() => onPage(Math.min(pages, page + 1))}
+        disabled={page >= pages}
+        aria-label="Next page"
+        className="btn btn-secondary min-w-[44px] justify-center text-[13px]"
+      >
+        Next
+      </button>
+      <span aria-hidden="true" className="text-[13px] text-ink-secondary">
+        {total} species
+      </span>
+    </nav>
   );
 }

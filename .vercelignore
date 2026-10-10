@@ -1,0 +1,26 @@
+# Build artifacts and caches
+dist/
+node_modules/
+.vercel/
+
+# Local state and tooling
+.hermes/
+.agents/
+.opencode/
+.neon
+skills-lock.json
+opencode.json
+
+# Local env (secrets configured in Vercel project env vars instead)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
