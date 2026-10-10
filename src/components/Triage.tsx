@@ -132,17 +132,14 @@ export default function Triage({ species, imageDataUrl, onOpenSpecies, onFinishe
     });
   }
 
-  /** Signed in: write straight to the account. */
+  /**
+   * Signed in: write straight to the account. Signed out: write anonymously.
+   * The owner argument is null when no account exists.
+   */
   async function saveToAccount() {
-    await commitDraft(currentDraft(), account!.name);
+    await commitDraft(currentDraft(), account?.name ?? null);
     await refreshPendingSyncCount();
     setSaved(true);
-  }
-
-  /** Signed out: carry the draft to register, which writes it once the account exists. */
-  function sendToRegister() {
-    setPendingAssessment(currentDraft());
-    navigate('/register');
   }
 
   /** Signed out and declining to save: write anonymously, then offer where to go. */
@@ -155,12 +152,8 @@ export default function Triage({ species, imageDataUrl, onOpenSpecies, onFinishe
   const photoInputId = 'wound-photo-input';
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <button type="button" onClick={leave} className="btn btn-tertiary -ml-2 px-2">
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          {step === 3 ? 'Finish' : 'Cancel'}
-        </button>
         <p className="text-[13px] text-ink-muted">
           {account ? `Signed in as ${account.name}` : 'No account needed'} &middot; nothing uploaded
         </p>
@@ -559,22 +552,22 @@ export default function Triage({ species, imageDataUrl, onOpenSpecies, onFinishe
           </Card>
 
           {/* DESIGN.md 17/18: the result is already on screen. The account prompt
-              sits below it and never blocks it. */}
+              sits below it and never blocks it. Login/register are disabled
+              for now, so this branch always falls through to the no-account path. */}
           <Card className="mt-5 border-l-4 border-l-brand p-5">
             <p className="flex items-center gap-2 text-[15px] font-semibold text-ink">
               <Lock className="h-4 w-4 text-brand" aria-hidden="true" />
               Save this assessment
             </p>
             <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
-              You have the full result either way. An account only keeps this record so you and the receiving
-              clinic can read it again later.
+              You have the full result either way. Recording it keeps this case for the receiving clinic.
             </p>
 
             <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
-{saved ? (
+              {saved ? (
                 <>
                   <p role="status" className="flex-1 text-sm font-semibold text-success">
-                    Saved to {account?.name}. You will find it under History.
+                    Assessment saved to this device.
                   </p>
                   <button type="button" onClick={leave} className="btn btn-primary">
                     Done
@@ -586,21 +579,20 @@ export default function Triage({ species, imageDataUrl, onOpenSpecies, onFinishe
                     ? `Recorded without an owner, so it will not appear in ${account.name}'s history.`
                     : 'Recorded without an owner, so it will not appear in your history.'}
                 </p>
-              ) : account ? (
-                <>
-                  <button type="button" onClick={() => void saveToAccount()} className="btn btn-primary">
-                    Save to {account.name}
-                  </button>
-                  <button type="button" onClick={() => void continueWithoutSaving()} className="btn btn-secondary">
-                    Continue without saving
-                  </button>
-                </>
               ) : (
                 <>
-                  <button type="button" onClick={sendToRegister} className="btn btn-primary">
-                    Create an account to save
+                  <button
+                    type="button"
+                    onClick={() => void saveToAccount()}
+                    className="btn btn-primary"
+                  >
+                    Save to this device
                   </button>
-                  <button type="button" onClick={() => void continueWithoutSaving()} className="btn btn-secondary">
+                  <button
+                    type="button"
+                    onClick={() => void continueWithoutSaving()}
+                    className="btn btn-secondary"
+                  >
                     Continue without saving
                   </button>
                 </>
@@ -615,10 +607,18 @@ export default function Triage({ species, imageDataUrl, onOpenSpecies, onFinishe
                   <button type="button" onClick={leave} className="btn btn-secondary">
                     Back to the landing page
                   </button>
-                  <button type="button" onClick={() => navigate('/discover')} className="btn btn-secondary">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/discover')}
+                    className="btn btn-secondary"
+                  >
                     Browse the snake map
                   </button>
-                  <button type="button" onClick={() => navigate('/identify')} className="btn btn-secondary">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/identify')}
+                    className="btn btn-secondary"
+                  >
                     Photograph the snake
                   </button>
                 </div>

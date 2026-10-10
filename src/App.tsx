@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Link, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Building2, Camera, ClipboardList, History, LayoutDashboard, Map, Menu, Radio, User, X } from 'lucide-react';
+import { Building2, Camera, LayoutDashboard, Map, Menu, X } from 'lucide-react';
 import LandingPage from './components/LandingPage';
 import Home from './components/Home';
 import Identify from './components/Identify';
@@ -9,8 +9,6 @@ import Discover from './components/Discover';
 import SpeciesDetail from './components/SpeciesDetail';
 import Dashboard from './components/Dashboard';
 import HistoryView from './components/History';
-import AccountPage from './components/Account';
-import AuthPage from './components/auth/AuthPage';
 import GovernmentDashboard from './components/GovernmentDashboard';
 import { useAppStore } from './store/store';
 import { logger } from './services/logger';
@@ -28,12 +26,10 @@ const PATH_BY_PAGE: Record<string, string> = {
 };
 
 const APP_NAV = [
-  { to: '/', label: 'Home', icon: Radio, end: true },
-  { to: '/identify', label: 'Identify', icon: Camera, end: false },
-  { to: '/discover', label: 'Snake Map', icon: Map, end: false },
-  { to: '/triage', label: 'Triage', icon: ClipboardList, end: false },
   { to: '/activity', label: 'Activity', icon: LayoutDashboard, end: false },
-  { to: '/history', label: 'History', icon: History, end: false },
+  { to: '/identify', label: 'Identify', icon: Camera, end: false },
+  { to: '/discover', label: 'Discover', icon: Map, end: false },
+  { to: '/government', label: 'Demo Dashboard', icon: Building2, end: false },
 ];
 
 function ScrollToTop() {
@@ -45,18 +41,13 @@ function ScrollToTop() {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  const { account, networkStatus } = useAppStore();
+  const { networkStatus } = useAppStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const { pathname } = useLocation();
-  const isAgency = account?.role === 'GOVERNMENT';
 
-  // The landing page carries its own navigation, so the shell chrome is skipped
-  // there rather than stacking a second bar on top of it.
+  // The landing page carries its own navigation, so the shell chrome is
+  // skipped there rather than stacking a second bar on top of it.
   const onLanding = pathname === '/';
-
-  // The app navigation is for a signed-in general user. Signed out, the landing
-  // page and the assessment and identification routes stay reachable.
-  const showAppNav = Boolean(account) && !isAgency && !onLanding;
 
   if (onLanding) {
     return (
@@ -89,107 +80,76 @@ function Shell({ children }: { children: React.ReactNode }) {
               <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
               {networkStatus === 'online' ? 'Online' : 'Offline, ready'}
             </span>
-
-            {account ? (
-              <>
-                {isAgency && (
-                  <span className="badge badge-brand hidden sm:inline-flex">
-                    <Building2 className="h-3 w-3" aria-hidden="true" />
-                    Agency view
-                  </span>
-                )}
-                <Link
-                  to="/account"
-                  aria-label={`Account, signed in as ${account.name}`}
-                  className="btn btn-secondary min-w-[44px] justify-center px-3 text-[13px]"
-                >
-                  <User className="h-4 w-4" aria-hidden="true" />
-                  <span className="hidden sm:inline">{account.name}</span>
-                  <span className="sr-only sm:hidden">{account.name}</span>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => setMenuOpen((open) => !open)}
-                  aria-expanded={menuOpen}
-                  aria-controls="app-navigation"
-                  aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-                  className="btn btn-secondary min-w-[44px] justify-center px-3"
-                >
-                  {menuOpen ? <X className="h-4 w-4" aria-hidden="true" /> : <Menu className="h-4 w-4" aria-hidden="true" />}
-                  <span className="hidden sm:inline">{menuOpen ? 'Close' : 'Menu'}</span>
-                  <span className="sr-only sm:hidden">{menuOpen ? 'Close navigation menu' : 'Open navigation menu'}</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="btn btn-secondary min-w-[44px] justify-center px-3 text-[13px]">
-                  Sign in
-                </Link>
-                <Link to="/register" className="btn btn-primary min-w-[44px] justify-center px-3 text-[13px]">
-                  Register
-                </Link>
-              </>
-            )}
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-expanded={menuOpen}
+              aria-controls="app-navigation"
+              aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              className="btn btn-secondary min-w-[44px] justify-center px-3"
+            >
+              {menuOpen ? <X className="h-4 w-4" aria-hidden="true" /> : <Menu className="h-4 w-4" aria-hidden="true" />}
+              <span className="hidden sm:inline">{menuOpen ? 'Close' : 'Menu'}</span>
+              <span className="sr-only sm:hidden">{menuOpen ? 'Close navigation menu' : 'Open navigation menu'}</span>
+            </button>
           </div>
         </div>
       </header>
 
-      {showAppNav && (
-        <nav id="app-navigation" aria-label="Main" className={`border-b border-line bg-surface ${menuOpen ? 'block' : 'hidden'}`}>
-          <ul className="mx-auto flex max-w-5xl flex-col px-2 pb-3 sm:flex-row sm:flex-wrap sm:px-4">
-            {APP_NAV.map((item) => (
-              <li key={item.to}>
-                <NavLink
-                  to={item.to}
-                  end={item.end}
-                  onClick={() => setMenuOpen(false)}
-                  className={({ isActive }) =>
-                    `flex min-h-[44px] w-full items-center gap-2.5 rounded-md px-3 text-sm font-semibold transition-colors sm:w-auto ${
-                      isActive ? 'bg-brand-50 text-brand' : 'text-ink-secondary hover:bg-surface-secondary hover:text-ink'
-                    }`
-                  }
-                >
-                  <item.icon className="h-4 w-4" aria-hidden="true" />
-                  {item.label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      )}
+      <nav
+        id="app-navigation"
+        aria-label="Main"
+        className={`border-b border-line bg-surface ${menuOpen ? 'block' : 'hidden'}`}
+      >
+        <ul className="mx-auto flex max-w-5xl flex-col px-2 pb-3 sm:flex-row sm:flex-wrap sm:px-4">
+          {APP_NAV.map((item) => (
+            <li key={item.to}>
+              <NavLink
+                to={item.to}
+                end={item.end}
+                onClick={() => setMenuOpen(false)}
+                className={({ isActive }) =>
+                  `flex min-h-[44px] w-full items-center gap-2.5 rounded-md px-3 text-sm font-semibold transition-colors sm:w-auto ${
+                    isActive ? 'bg-brand-50 text-brand' : 'text-ink-secondary hover:bg-surface-secondary hover:text-ink'
+                  }`
+                }
+              >
+                <item.icon className="h-4 w-4" aria-hidden="true" />
+                {item.label}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
       <main id="main" className="flex-1">
         {children}
       </main>
 
-      {showAppNav && (
-        <>
-          <nav
-            aria-label="Primary"
-            className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
-          >
-            <ul className="mx-auto flex max-w-md">
-              {APP_NAV.slice(0, 4).map((item) => (
-                <li key={item.to} className="flex-1">
-                  <NavLink
-                    to={item.to}
-                    end={item.end}
-                    className={({ isActive }) =>
-                      `flex min-h-[56px] w-full flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[11px] font-semibold ${
-                        isActive ? 'text-brand' : 'text-ink-secondary'
-                      }`
-                    }
-                  >
-                    <item.icon className="h-5 w-5" aria-hidden="true" />
-                    {item.label}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </nav>
-          <div aria-hidden="true" className="h-[72px] md:hidden" />
-        </>
-      )}
+      <nav
+        aria-label="Primary"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
+      >
+        <ul className="mx-auto flex max-w-md">
+          {APP_NAV.map((item) => (
+            <li key={item.to} className="flex-1">
+              <NavLink
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `flex min-h-[56px] w-full flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[11px] font-semibold ${
+                    isActive ? 'text-brand' : 'text-ink-secondary'
+                  }`
+                }
+              >
+                <item.icon className="h-5 w-5" aria-hidden="true" />
+                {item.label}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
+      <div aria-hidden="true" className="h-[72px] md:hidden" />
     </div>
   );
 }
@@ -222,13 +182,10 @@ function AppRoutes() {
           <LandingPage
             onIdentify={() => navigate('/identify')}
             onTriage={() => navigate('/triage')}
-            onSignIn={() => navigate('/login')}
-            onRegister={() => navigate('/register')}
+            onGovernment={() => navigate('/government')}
           />
         }
       />
-      <Route path="/login" element={<AuthPage mode="login" />} />
-      <Route path="/register" element={<AuthPage mode="register" />} />
       <Route
         path="/triage"
         element={
@@ -245,7 +202,6 @@ function AppRoutes() {
         path="/identify"
         element={
           <Identify
-            onBack={() => navigate(-1)}
             onOpenSpecies={(taxonId) => navigate(`/species/${taxonId}`)}
             onProceed={({ chosen, imageDataUrl }) => {
               setIdentified({ species: chosen, imageDataUrl });
@@ -258,7 +214,6 @@ function AppRoutes() {
       <Route path="/species/:slug" element={<SpeciesRoute />} />
       <Route path="/activity" element={<Dashboard onNavigate={(page: string) => navigate(PATH_BY_PAGE[page] ?? '/activity')} />} />
       <Route path="/history" element={<HistoryView onBack={() => navigate('/activity')} />} />
-      <Route path="/account" element={<AccountPage onSignedOut={() => navigate('/')} />} />
       <Route path="/government" element={<GovernmentDashboard />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

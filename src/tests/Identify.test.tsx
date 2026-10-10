@@ -14,7 +14,7 @@ vi.mock('../db/db', () => {
       geo_bbox: { latMin: -9, latMax: -1, lngMin: 130, lngMax: 141 },
       kde_params: { bandwidth: 2, n_observations: 350, mean_lat: -4.5, mean_lng: 138 },
       clinical_priority: 5,
-      reference_images: ['/dataset/Acanthophis_laevis_obs121339246_photo205315764.jpg'],
+      reference_images: ['https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Acanthophis_laevis/Acanthophis_laevis_obs121339246_photo205315764.webp'],
       morphological_traits: ['Short, stout body'],
       habitat: 'Lowland forest',
       venom_notes: 'Potent neurotoxic venom.',
@@ -28,7 +28,7 @@ vi.mock('../db/db', () => {
       geo_bbox: { latMin: -11, latMax: 6, lngMin: 95, lngMax: 141 },
       kde_params: { bandwidth: 2, n_observations: 2400, mean_lat: -2, mean_lng: 115 },
       clinical_priority: 1,
-      reference_images: ['/dataset/Ahaetulla_prasina_0003.jpg'],
+      reference_images: ['https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Ahaetulla_prasina/Ahaetulla_prasina_0003.webp'],
       morphological_traits: ['Very slender bright green body'],
       habitat: 'Forest and plantation',
       venom_notes: 'Not venomous.',
@@ -37,13 +37,12 @@ vi.mock('../db/db', () => {
   return { db: { species: { toArray: vi.fn().mockResolvedValue(species) } } };
 });
 
-const mockBack = vi.fn();
 const mockProceed = vi.fn();
 const mockOpenSpecies = vi.fn();
 
 function renderIdentify() {
   return render(
-    <Identify onBack={mockBack} onProceed={mockProceed} onOpenSpecies={mockOpenSpecies} />,
+    <Identify onProceed={mockProceed} onOpenSpecies={mockOpenSpecies} />,
   );
 }
 

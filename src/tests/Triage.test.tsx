@@ -110,19 +110,15 @@ describe('Triage', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/below 90/i));
   });
 
-  it('sends the finished assessment to register instead of blocking on a form', async () => {
-    const { path } = renderTriage();
+  it('sends the finished assessment to this device instead of blocking on a form', async () => {
+    renderTriage();
     await reachResult();
 
-    fireEvent.click(screen.getByRole('button', { name: /create an account to save/i }));
+    fireEvent.click(screen.getByRole('button', { name: /save to this device/i }));
 
-    await waitFor(() => expect(path()).toBe('/register'));
-    const draft = useAppStore.getState().pendingAssessment as { incidentId: string; details: unknown };
-    expect(draft).toBeTruthy();
-    expect(draft.incidentId).toBeTruthy();
-    expect((draft.details as { severity_assessment: { grade: number } }).severity_assessment.grade).toBe(0);
-    // Nothing is written until an account exists.
-    expect(commitDraft).not.toHaveBeenCalled();
+    await waitFor(() => expect(commitDraft).toHaveBeenCalledWith(expect.anything(), null));
+    const draft = useAppStore.getState().pendingAssessment;
+    expect(draft).toBeNull();
   });
 
   it('offers three destinations after continuing without saving', async () => {
@@ -162,27 +158,37 @@ describe('Triage', () => {
     await waitFor(() => expect(path()).toBe('/activity'));
   });
 
-  it('returns to the landing page on cancel while signed out', async () => {
-    const { path } = renderTriage();
-    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
-    await waitFor(() => expect(path()).toBe('/'));
-  });
-
-  it('returns to activity on cancel while signed in', async () => {
-    useAppStore.setState({ account: { name: 'Rina', role: 'USER' } });
-    const { path } = renderTriage();
-    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
-    await waitFor(() => expect(path()).toBe('/activity'));
-  });
-
-  it('saves straight to the account when already signed in', async () => {
-    useAppStore.setState({ account: { name: 'Rina', role: 'USER' } });
+  it('saves to the device and shows a confirmation', async () => {
     renderTriage();
     await reachResult();
 
-    fireEvent.click(screen.getByRole('button', { name: /save to Rina/i }));
+    fireEvent.click(screen.getByRole('button', { name: /save to this device/i }));
 
+    await waitFor(() => expect(commitDraft).toHaveBeenCalledWith(expect.anything(), null));
+    expect(await screen.findByText(/assessment saved to this device/i)).toBeInTheDocument();
+  });
+
+  it('returns to the landing page on "done" while signed out', async () => {
+    const { path } = renderTriage();
+    await reachResult();
+    fireEvent.click(screen.getByRole('button', { name: /save to this device/i }));
+    await waitFor(() => expect(commitDraft).toHaveBeenCalledWith(expect.anything(), null));
+
+    fireEvent.click(screen.getByRole('button', { name: /done/i }));
+    await waitFor(() => expect(path()).toBe('/'));
+    expect(mockCleared).toHaveBeenCalled();
+  });
+
+  it('returns to activity on "done" while signed in', async () => {
+    useAppStore.setState({ account: { name: 'Rina', role: 'USER' } });
+    const { path } = renderTriage();
+    await reachResult();
+    fireEvent.click(screen.getByRole('button', { name: /save to this device/i }));
+
+    // When signed in, saveToAccount passes account.name ("Rina"), not null.
     await waitFor(() => expect(commitDraft).toHaveBeenCalledWith(expect.anything(), 'Rina'));
-    expect(await screen.findByText(/saved to Rina/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /done/i }));
+    await waitFor(() => expect(path()).toBe('/activity'));
   });
 });

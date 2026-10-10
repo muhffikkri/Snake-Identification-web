@@ -1,11 +1,11 @@
 import { ArrowRight, Ban, HelpCircle, ClipboardList, Radio } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Card } from './ui/Primitives';
 
 interface LandingProps {
   onIdentify: () => void;
   onTriage: () => void;
-  onSignIn: () => void;
-  onRegister: () => void;
+  onGovernment: () => void;
 }
 
 /** Kept from the existing copy. WHO burden figures attributed, not invented. */
@@ -91,11 +91,31 @@ const TEAM = [
 ];
 
 const COLLABORATORS = [
-  { name: 'Universitas Diponegoro', note: 'Semarang, Indonesia' },
-  { name: 'Harvard T.H. Chan School of Public Health', note: 'School of Public Health' },
-  { name: 'Health Systems Innovation Lab', note: 'Harvard University' },
-  { name: 'AI for Smart-X', note: 'Research collaboration' },
-  { name: 'PATH', note: 'Global health' },
+  { name: 'Universitas Diponegoro', note: 'Semarang, Indonesia', logo: '/universitas_diponegoro.png' },
+  { name: 'Harvard T.H. Chan School of Public Health', note: 'School of Public Health', logo: '/harvard.png' },
+  { name: 'Health Systems Innovation Lab', note: 'Harvard University', logo: '/health_system.png' },
+  { name: 'AI for Smart-X', note: 'Research collaboration', logo: '/aisx.png' },
+  { name: 'PATH', note: 'Global health', logo: '/path.png' },
+];
+
+// Reference species photos from the public S3 bucket, cycled through the
+// 3D hero card carousel every 3 seconds.
+const HERO_IMAGES = [
+  {
+    src: 'https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Acanthophis_laevis/Acanthophis_laevis_obs121339246_photo205315764.webp',
+    species: 'Acanthophis laevis',
+    note: 'Smooth-scaled death adder. One entry in the reference set.',
+  },
+  {
+    src: 'https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Ahaetulla_prasina/Ahaetulla_prasina_0003.webp',
+    species: 'Ahaetulla prasina',
+    note: 'Oriental whip snake. Recorded across Java and Sumatra.',
+  },
+  {
+    src: 'https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Ahaetulla_fasciolata/Ahaetulla_fasciolata_obs202932892_photo358471931.webp',
+    species: 'Ahaetulla fasciolata',
+    note: 'Speckled-headed vine snake. Reference set entry.',
+  },
 ];
 
 function initials(name: string) {
@@ -106,7 +126,92 @@ function initials(name: string) {
     .join('');
 }
 
-export default function Landing({ onIdentify, onTriage, onSignIn, onRegister }: LandingProps) {
+/**
+ * 3D card carousel: three reference photographs tilted in perspective, the
+ * active one facing forward, the others fanned behind it. Advances every 3 s;
+ * a dot click restarts the timer at the chosen card.
+ */
+function HeroCarousel() {
+  const [active, setActive] = useState(0);
+  const [intervalId, setIntervalId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setActive((prev) => (prev + 1) % HERO_IMAGES.length);
+    }, 3000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  function selectCard(index: number) {
+    setActive(index);
+    if (intervalId !== null) window.clearInterval(intervalId);
+    const id = window.setInterval(() => {
+      setActive((prev) => (prev + 1) % HERO_IMAGES.length);
+    }, 3000);
+    setIntervalId(id);
+  }
+
+  const activeImg = HERO_IMAGES[active];
+
+  return (
+    <div role="group" aria-label="Reference species photographs">
+      <div className="relative h-52 w-64 sm:h-60 sm:w-72" style={{ perspective: '900px' }}>
+        {HERO_IMAGES.map((img, i) => {
+          // offset is -1, 0, or 1 around the active index (wrap-aware)
+          let offset = i - active;
+          if (offset > HERO_IMAGES.length / 2) offset -= HERO_IMAGES.length;
+          if (offset < -HERO_IMAGES.length / 2) offset += HERO_IMAGES.length;
+          const isActive = offset === 0;
+          return (
+            <figure
+              key={img.src}
+              className="card absolute inset-0 overflow-hidden"
+              style={{
+                transform: `translateZ(${isActive ? 60 : -40}px) rotateY(${offset * 18}deg) scale(${isActive ? 1 : 0.92})`,
+                transition: 'transform 0.6s ease, opacity 0.6s ease',
+                opacity: isActive ? 1 : 0.45,
+                zIndex: isActive ? 20 : 10,
+                transformStyle: 'preserve-3d',
+              }}
+            >
+              <img
+                src={img.src}
+                alt={isActive ? `${img.species}. ${img.note}` : ''}
+                className="h-full w-full object-cover"
+                loading={isActive ? 'eager' : 'lazy'}
+              />
+              {isActive && (
+                <figcaption className="absolute inset-x-0 bottom-0 border-t border-line bg-surface/85 px-4 py-3.5 backdrop-blur-sm">
+                  <p className="text-[15px] font-semibold text-ink">{img.species}</p>
+                  <p className="mt-0.5 text-[13px] leading-snug text-ink-secondary">{img.note}</p>
+                </figcaption>
+              )}
+            </figure>
+          );
+        })}
+      </div>
+      <div className="mt-4 flex items-center justify-center gap-1.5" role="tablist" aria-label="Carousel controls">
+        {HERO_IMAGES.map((img, i) => (
+          <button
+            key={img.src}
+            type="button"
+            role="tab"
+            aria-selected={i === active}
+            aria-label={`Show ${img.species}`}
+            onClick={() => selectCard(i)}
+            className={`h-2 w-2 rounded-full transition-colors ${i === active ? 'bg-brand' : 'bg-line-control'}`}
+          />
+        ))}
+      </div>
+      <p className="sr-only">
+        Currently showing {activeImg.species}. The carousel advances to the next reference photograph every
+        three seconds.
+      </p>
+    </div>
+  );
+}
+
+export default function Landing({ onIdentify, onTriage, onGovernment }: LandingProps) {
   return (
     <div className="bg-canvas">
       <nav
@@ -119,41 +224,38 @@ export default function Landing({ onIdentify, onTriage, onSignIn, onRegister }: 
             <span className="text-[15px] font-semibold tracking-tight">SnakeBiteAI</span>
           </a>
 
+          {/* The old section-anchor nav (The problem / How it works / Development
+              plan / Team) is replaced by the two tool entry points; sign in and
+              register are disabled for now, so Demo Dashboard takes the primary
+              button slot. */}
           <div className="hidden items-center gap-6 lg:flex">
-            <a
+            <button
+              type="button"
+              onClick={onIdentify}
               className="flex min-h-[44px] items-center text-sm font-medium text-ink-secondary hover:text-ink"
-              href="#problem"
             >
-              The problem
-            </a>
-            <a
+              Identify a Snake
+            </button>
+            <button
+              type="button"
+              onClick={onTriage}
               className="flex min-h-[44px] items-center text-sm font-medium text-ink-secondary hover:text-ink"
-              href="#workflow"
             >
-              How it works
-            </a>
-            <a
-              className="flex min-h-[44px] items-center text-sm font-medium text-ink-secondary hover:text-ink"
-              href="#plan"
-            >
-              Development plan
-            </a>
-            <a
-              className="flex min-h-[44px] min-w-[52px] items-center justify-center px-1.5 text-sm font-medium text-ink-secondary hover:text-ink"
-              href="#team"
-            >
-              Team
-            </a>
+              Start Triage Assessment
+            </button>
           </div>
 
-          {/* Triage stays reachable from the hero, so the navigation carries the
-              two account entry points instead. */}
           <div className="flex flex-none items-center gap-2">
-            <button type="button" onClick={onSignIn} className="btn btn-secondary px-3.5 text-[13px]">
-              Sign in
+            <button
+              type="button"
+              onClick={onIdentify}
+              className="btn btn-secondary px-3.5 text-[13px] lg:hidden"
+            >
+              Identify
             </button>
-            <button type="button" onClick={onRegister} className="btn btn-primary px-3.5 text-[13px]">
-              Register
+            <button type="button" onClick={onGovernment} className="btn btn-primary px-3.5 text-[13px]">
+              Demo Dashboard
+              <Radio className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -183,26 +285,15 @@ export default function Landing({ onIdentify, onTriage, onSignIn, onRegister }: 
               </button>
             </div>
             <p className="mt-3 text-[13px] text-ink-muted">
-              No account needed to start an assessment. Signing in only saves your history.
+              No account needed to start an assessment.
             </p>
           </div>
 
-          {/* Reference specimen from the on-device dataset. A real photograph is
-              evidence that the feature exists; an illustration would not be. */}
-          <figure className="card mt-10 overflow-hidden md:col-span-5 md:mt-0">
-            <img
-              src="/dataset/Acanthophis_laevis_obs121339246_photo205315764.jpg"
-              alt="Acanthophis laevis, the smooth-scaled death adder, one of the reference photographs held on the device"
-              className="h-52 w-full object-cover sm:h-60"
-              loading="eager"
-            />
-            <figcaption className="border-t border-line px-4 py-3.5">
-              <p className="text-[15px] font-semibold text-ink">Acanthophis laevis</p>
-              <p className="mt-0.5 text-[13px] leading-snug text-ink-secondary">
-                Smooth-scaled death adder. One entry in the reference set stored on the device.
-              </p>
-            </figcaption>
-          </figure>
+          {/* 3D reference-specimen carousel: real photographs from the reference
+              set, rotating every 3 seconds, replacing the single static shot. */}
+          <div className="mt-10 md:col-span-5 md:mt-0">
+            <HeroCarousel />
+          </div>
         </div>
       </header>
 
@@ -330,11 +421,19 @@ export default function Landing({ onIdentify, onTriage, onSignIn, onRegister }: 
       <section id="collaborators" className="border-t border-line bg-surface">
         <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14">
           <p className="overline">Global health system and academic collaborators</p>
-          <ul className="mt-6 flex flex-wrap gap-x-10 gap-y-4">
+          <ul className="mt-6 flex flex-wrap gap-x-10 gap-y-6">
             {COLLABORATORS.map((org) => (
-              <li key={org.name}>
-                <p className="text-sm font-semibold text-ink">{org.name}</p>
-                <p className="mt-0.5 text-[13px] text-ink-muted">{org.note}</p>
+              <li key={org.name} className="flex items-center gap-3">
+                <img
+                  src={org.logo}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-8 w-8 flex-none rounded-md object-contain"
+                />
+                <div>
+                  <p className="text-sm font-semibold text-ink">{org.name}</p>
+                  <p className="mt-0.5 text-[13px] text-ink-muted">{org.note}</p>
+                </div>
               </li>
             ))}
           </ul>
@@ -372,10 +471,10 @@ export default function Landing({ onIdentify, onTriage, onSignIn, onRegister }: 
             </button>
             <button
               type="button"
-              onClick={onIdentify}
+              onClick={onGovernment}
               className="flex min-h-[44px] items-center text-left text-[13px] font-medium text-white hover:underline"
             >
-              Snakes near you
+              Demo Dashboard
             </button>
           </div>
         </div>

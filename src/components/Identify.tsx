@@ -11,7 +11,6 @@ export type IdentifyOutcome = {
 } | null;
 
 interface IdentifyProps {
-  onBack: () => void;
   onProceed: (outcome: NonNullable<IdentifyOutcome>) => void;
   onOpenSpecies: (taxonId: number) => void;
 }
@@ -25,12 +24,12 @@ const STEPS = [
 ];
 
 const REFERENCE_SET = [
-  '/dataset/Acanthophis_laevis_obs121339246_photo205315764.jpg',
-  '/dataset/Acanthophis_laevis_obs137275705_photo234421463.jpg',
-  '/dataset/Ahaetulla_fasciolata_obs202932892_photo358471931.jpg',
-  '/dataset/Ahaetulla_fasciolata_obs310503736_photo560406804.jpg',
-  '/dataset/Ahaetulla_prasina_0003.jpg',
-  '/dataset/Ahaetulla_rufusoculara_obs252803925_photo456126350.jpg',
+  'https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Acanthophis_laevis/Acanthophis_laevis_obs121339246_photo205315764.webp',
+  'https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Acanthophis_laevis/Acanthophis_laevis_obs137275705_photo234421463.webp',
+  'https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Ahaetulla_fasciolata/Ahaetulla_fasciolata_obs202932892_photo358471931.webp',
+  'https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Ahaetulla_fasciolata/Ahaetulla_fasciolata_obs310503736_photo560406804.webp',
+  'https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Ahaetulla_prasina/Ahaetulla_prasina_0003.webp',
+  'https://br-jolly-bird-b5k243m5.storage.c-7.us-east-2.aws.neon.tech/snake-image/reference/Ahaetulla_rufusoculara/Ahaetulla_rufusoculara_obs252803925_photo456126350.webp',
 ];
 
 type Candidate = SnakeSpecies & { confidence: number; inArea: boolean };
@@ -40,11 +39,15 @@ type Candidate = SnakeSpecies & { confidence: number; inArea: boolean };
  * without a real model in the loop.
  */
 function speciesForPath(path: string): string | null {
-  const match = path.match(/\/dataset\/([A-Za-z]+)_([a-z]+)/);
-  return match ? `${match[1]} ${match[2]}` : null;
+  // S3 URLs: /reference/Acanthophis_laevis/file.webp  ->  Acanthophis laevis
+  const s3 = path.match(/\/reference\/([A-Za-z]+)_([a-z0-9]+)/);
+  if (s3) return `${s3[1]} ${s3[2]}`;
+  const local = path.match(/\/dataset\/([A-Za-z]+)_([a-z0-9]+)/);
+  if (local) return `${local[1]} ${local[2]}`;
+  return null;
 }
 
-export default function Identify({ onBack, onProceed, onOpenSpecies }: IdentifyProps) {
+export default function Identify({ onProceed, onOpenSpecies }: IdentifyProps) {
   const { gps, setGPS } = useAppStore();
 
   const [phase, setPhase] = useState<'capture' | 'processing' | 'result' | 'failed'>('capture');
@@ -122,12 +125,7 @@ export default function Identify({ onBack, onProceed, onOpenSpecies }: IdentifyP
   const others = candidates.filter((c) => c.taxon_id !== selectedId);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
-      <button type="button" onClick={onBack} className="btn btn-tertiary -ml-2 mb-4 px-2">
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Back
-      </button>
-
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       {phase === 'capture' && (
         <SectionTitle
           as="h1"
