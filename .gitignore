@@ -12,52 +12,35 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Dependency directories
 node_modules/
-jspm_packages/
 
-# Snowpack dependency directory
-web_modules/
+# Build output
+dist/
+build/
+.webpack/
+.workbox/
 
 # TypeScript cache
 *.tsbuildinfo
 
-# Optional npm cache directory
-.npm
-
-# Parcel buffer directory
-.parcel-cache
-
-# Production build output
-build/
-
-# Serverless Webpack directories
-.webpack/
-
-# Service Worker / Workbox directory
-.workbox/
-
-# Local env files
+# Local env files (secrets live in Vercel project env vars, not here)
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# Local tools and Node.js binary files
-tools/*
-# The verification and deployment harnesses are part of the documented
-# workflow, so they are tracked even though the rest of tools/ is scratch.
-!tools/click-through.mjs
-!tools/contrast-audit.mjs
-!tools/offline-check.mjs
-!tools/serve-dist.mjs
-!tools/vercel-rewrite-check.mjs
-.gemini/
-antigravity-ide/
-
-# System Files
+# System files
 .DS_Store
 Thumbs.db
 
-# ML Models & Notebooks
+# ML model artifacts
 snakesnake (6).ipynb
 spatio_visual_snake_models.pkl
+
+# AI agent tooling (opencode / neon CLI local state)
+.opencode/
+.agents/
+.hermes/
+skills-lock.json
+opencode.json
+.neon

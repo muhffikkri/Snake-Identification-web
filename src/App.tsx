@@ -254,8 +254,8 @@ function AppRoutes() {
           />
         }
       />
-      <Route path="/discover" element={<Discover onOpenSpecies={(taxonId) => navigate(`/species/${taxonId}`)} />} />
-      <Route path="/species/:taxonId" element={<SpeciesRoute />} />
+      <Route path="/discover" element={<Discover onOpenSpecies={(slug) => navigate(`/species/${slug}`)} />} />
+      <Route path="/species/:slug" element={<SpeciesRoute />} />
       <Route path="/activity" element={<Dashboard onNavigate={(page: string) => navigate(PATH_BY_PAGE[page] ?? '/activity')} />} />
       <Route path="/history" element={<HistoryView onBack={() => navigate('/activity')} />} />
       <Route path="/account" element={<AccountPage onSignedOut={() => navigate('/')} />} />
@@ -267,9 +267,8 @@ function AppRoutes() {
 
 function SpeciesRoute() {
   const navigate = useNavigate();
-  const { taxonId } = useParams();
-  const parsed = Number(taxonId);
-  return <SpeciesDetail taxonId={Number.isFinite(parsed) ? parsed : -1} onBack={() => navigate(-1)} />;
+  const { slug } = useParams();
+  return <SpeciesDetail slug={slug ?? ''} onBack={() => navigate(-1)} />;
 }
 
 function NetworkWatcher() {

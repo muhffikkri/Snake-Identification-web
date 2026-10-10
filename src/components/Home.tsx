@@ -1,37 +1,40 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { db, getIncidentLog, upsertIncident, type IncidentDetails, type VenomClass } from '../db/db';
 import { useAppStore, DEFAULT_GPS } from '../store/store';
 import { VENOM } from '../lib/clinical';
 import { REGIONS, nearestRegion, regionAt } from '../lib/regions';
-import { useSpecies } from '../lib/data';
+import { useNeonSpeciesPage, useLazyLoadSentinel } from '../lib/useNeonSpecies';
+import { imageSrc, type SpeciesItem } from '../lib/neon';
 import { Badge, Card, SectionTitle } from './ui/Primitives';
 
 interface HomeProps {
   onNavigate: (page: 'identify' | 'triage' | 'discover' | 'activity') => void;
 }
 
+function HomeSpeciesSkeleton() {
+  return (
+    <ul className="mt-4 grid gap-2.5 sm:grid-cols-2" aria-hidden="true">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <li key={i} className="card h-20 animate-pulse overflow-hidden" />
+      ))}
+    </ul>
+  );
+}
+
 export default function Home({ onNavigate }: HomeProps) {
   const { gps, networkStatus, account } = useAppStore();
-  const { data: species, loading } = useSpecies();
+  const { items, total, pages, page, loading, loadMore } = useNeonSpeciesPage();
   const [starting, setStarting] = useState(false);
   const [woundPhoto, setWoundPhoto] = useState<string | null>(null);
 
-  useEffect(() => {
-    db.species.count().catch(console.error);
-  }, []);
-
   const region = gps ? (regionAt(gps.lat, gps.lng) ?? nearestRegion(gps.lat, gps.lng)) : null;
-  const localSpecies = (species ?? []).filter((s) => {
-    if (!region) return false;
-    const [lat, lng] = region.center;
-    return (
-      lat >= s.geo_bbox.latMin &&
-      lat <= s.geo_bbox.latMax &&
-      lng >= s.geo_bbox.lngMin &&
-      lng <= s.geo_bbox.lngMax
-    );
-  });
+
+  const sentinelRef = useLazyLoadSentinel(loadMore, !loading && page < pages);
+
+  const localSpecies: SpeciesItem[] = loading
+    ? []
+    : items.filter((s) => s.observation_count > 0);
 
   /**
    * Emergency start. Records a worst-case assessment at the current coordinate so
@@ -177,9 +180,7 @@ export default function Home({ onNavigate }: HomeProps) {
             </div>
 
             {loading ? (
-              <p role="status" className="mt-4 text-sm text-ink-secondary">
-                Reading the on-device reference set
-              </p>
+              <HomeSpeciesSkeleton />
             ) : localSpecies.length === 0 ? (
               <p className="mt-4 rounded-md bg-surface-secondary px-3 py-4 text-[13px] leading-relaxed text-ink-secondary">
                 No species in the reference set match this region. Change your location or browse the full list.
@@ -187,30 +188,43 @@ export default function Home({ onNavigate }: HomeProps) {
             ) : (
               <>
                 <ul className="mt-4 grid gap-2.5 sm:grid-cols-2">
-                  {localSpecies.map((s) => (
-                    <li key={s.taxon_id}>
-                      <button
-                        type="button"
-                        onClick={() => onNavigate('discover')}
-                        className="flex h-full w-full items-stretch overflow-hidden rounded-lg border border-line bg-surface text-left transition-colors hover:border-line-control"
-                      >
-                        <img
-                          src={s.reference_images[0]}
-                          alt={s.scientific_name}
-                          className="h-full w-16 flex-none object-cover"
-                          loading="lazy"
-                        />
-                        <span className="min-w-0 flex-1 p-3">
-                          <span className="block truncate text-sm font-semibold text-ink">{s.scientific_name}</span>
-                          <span className="mt-0.5 block truncate text-[13px] text-ink-secondary">{s.common_name}</span>
-                          <span className="mt-1.5 block">
-                            <Badge tone={VENOM[s.venom_type].tone}>{VENOM[s.venom_type].label}</Badge>
+                  {localSpecies.map((s) => {
+                    const img = s.image_path ? imageSrc(s.image_path) : undefined;
+                    return (
+                      <li key={s.slug}>
+                        <button
+                          type="button"
+                          onClick={() => onNavigate('discover')}
+                          className="flex h-full w-full items-stretch overflow-hidden rounded-lg border border-line bg-surface text-left transition-colors hover:border-line-control"
+                        >
+                          {img ? (
+                            <img
+                              src={img}
+                              alt={s.scientific_name}
+                              className="h-full w-16 flex-none bg-surface-secondary object-cover"
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="flex h-full w-16 flex-none items-center justify-center bg-surface-secondary">
+                              <span className="text-[10px] text-ink-muted">no image</span>
+                            </div>
+                          )}
+                          <span className="min-w-0 flex-1 p-3">
+                            <span className="block truncate text-sm font-semibold text-ink">{s.scientific_name}</span>
+                            <span className="mt-0.5 block truncate text-[13px] text-ink-secondary">
+                              {s.common_name_en ?? s.common_name_local}
+                            </span>
+                            <span className="mt-1.5 block">
+                              <Badge tone={VENOM[s.venom_type].tone}>{VENOM[s.venom_type].label}</Badge>
+                            </span>
                           </span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
+                <div ref={sentinelRef} className="h-2" />
                 <p className="mt-3 text-[13px] leading-relaxed text-ink-secondary">
                   Presence here means a sighting has been recorded in this region, not that the snake is nearby.
                 </p>

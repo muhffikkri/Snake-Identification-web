@@ -1,24 +1,38 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { LocateFixed, Search } from 'lucide-react';
 import { useAppStore, DEFAULT_GPS } from '../store/store';
 import { REGIONS, nearestRegion, regionAt, type Region } from '../lib/regions';
 import { VENOM } from '../lib/clinical';
-import { useSpecies } from '../lib/data';
+import { useNeonSpeciesPage, useLazyLoadSentinel, PAGE_SIZE } from '../lib/useNeonSpecies';
+import { imageSrc, type SpeciesItem } from '../lib/neon';
 import { Badge, Card, EmptyState, ErrorState, SectionTitle } from './ui/Primitives';
 
 interface DiscoverProps {
-  onOpenSpecies: (taxonId: number) => void;
+  onOpenSpecies: (slug: string) => void;
 }
 
-/** Regions the reference set actually covers, derived from each bounding box. */
-function coversRegion(region: Region, bbox: { latMin: number; latMax: number; lngMin: number; lngMax: number }) {
-  const [rLat, rLng] = region.center;
-  return rLat >= bbox.latMin && rLat <= bbox.latMax && rLng >= bbox.lngMin && rLng <= bbox.lngMax;
+interface MatchItem {
+  item: SpeciesItem;
+  here: boolean;
+  image: string;
+}
+
+export function SpeciesCardSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <ul className="mt-4 grid gap-3 sm:grid-cols-2" aria-hidden="true">
+      {Array.from({ length: count }).map((_, i) => (
+        <li key={i}>
+          <div className="card h-28 animate-pulse overflow-hidden" />
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export default function Discover({ onOpenSpecies }: DiscoverProps) {
   const { gps, setGPS, networkStatus } = useAppStore();
-  const { data: species, error, loading } = useSpecies();
+  const { items, total, pages, page, loading, error, loadMore, reset } = useNeonSpeciesPage();
 
   const [pickedRegion, setPickedRegion] = useState<Region | null>(null);
   const [query, setQuery] = useState('');
@@ -44,8 +58,6 @@ export default function Discover({ onOpenSpecies }: DiscoverProps) {
         setScanning(false);
       },
       () => {
-        // A denied or unavailable fix is a normal outcome, not a failure. The
-        // manual region picker still works.
         setGPS({ ...DEFAULT_GPS, timestamp: Date.now() });
         setScanning(false);
       },
@@ -53,17 +65,24 @@ export default function Discover({ onOpenSpecies }: DiscoverProps) {
     );
   }
 
-  const matches = useMemo(() => {
-    if (!species) return [];
+  const matches: MatchItem[] = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return species
-      .filter((s) => !needle || s.scientific_name.toLowerCase().includes(needle) || s.common_name.toLowerCase().includes(needle))
+    return items
+      .filter(
+        (s) =>
+          !needle ||
+          s.scientific_name.toLowerCase().includes(needle) ||
+          (s.common_name_en ?? '').toLowerCase().includes(needle) ||
+          (s.common_name_local ?? '').toLowerCase().includes(needle),
+      )
       .map((s) => ({
-        species: s,
-        here: detected ? coversRegion(detected, s.geo_bbox) : false,
-      }))
-      .sort((a, b) => Number(b.here) - Number(a.here));
-  }, [species, query, detected]);
+        item: s,
+        here: s.observation_count > 0,
+        image: s.image_path ? imageSrc(s.image_path) : '',
+      }));
+  }, [items, query]);
+
+  const sentinelRef = useLazyLoadSentinel(loadMore, !loading && page < pages && query === '');
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
@@ -71,7 +90,7 @@ export default function Discover({ onOpenSpecies }: DiscoverProps) {
         as="h1"
         overline="Snake map"
         title="Snakes recorded near you"
-        lede="The device holds a reference set of species and the area each one has been recorded in. Anything listed here is plausible for this region, not proof that it is present."
+        lede="The live catalogue is held on the server and filtered by the region you are in or searching for. Anything listed here has been recorded somewhere in Indonesia."
       />
 
       <Card className="mt-6 p-5">
@@ -125,7 +144,7 @@ export default function Discover({ onOpenSpecies }: DiscoverProps) {
               {detected ? `Species recorded in ${detected.name}` : 'Species in the reference set'}
             </h2>
             <p className="mt-1 text-[13px] text-ink-secondary">
-              {loading ? 'Reading the on-device reference set' : `${matches.length} species`}
+              {loading ? 'Reading the reference set' : `${total} species`}
             </p>
           </div>
           <div className="w-full sm:w-64">
@@ -147,11 +166,7 @@ export default function Discover({ onOpenSpecies }: DiscoverProps) {
         </div>
 
         {loading ? (
-          <ul className="mt-4 space-y-3">
-            {[0, 1, 2].map((i) => (
-              <li key={i} className="card h-28 animate-pulse" />
-            ))}
-          </ul>
+          <SpeciesCardSkeleton count={6} />
         ) : matches.length === 0 ? (
           <div className="mt-4">
             <EmptyState
@@ -172,26 +187,35 @@ export default function Discover({ onOpenSpecies }: DiscoverProps) {
           </div>
         ) : (
           <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-            {matches.map(({ species: sp, here }) => (
-              <li key={sp.taxon_id}>
+            {matches.map(({ item: sp, here, image }) => (
+              <li key={sp.slug}>
                 <Card className="h-full overflow-hidden">
                   <button
                     type="button"
-                    onClick={() => onOpenSpecies(sp.taxon_id)}
+                    onClick={() => onOpenSpecies(sp.slug)}
                     className="flex h-full w-full items-stretch text-left"
                   >
-                    <img
-                      src={sp.reference_images[0]}
-                      alt={sp.scientific_name}
-                      className="h-full w-24 flex-none object-cover sm:w-28"
-                      loading="lazy"
-                    />
+                    {image ? (
+                      <img
+                        src={image}
+                        alt={sp.scientific_name}
+                        className="h-full w-24 flex-none bg-surface-secondary object-cover sm:w-28"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="flex h-full w-24 flex-none items-center justify-center bg-surface-secondary sm:w-28">
+                        <span className="text-[11px] text-ink-muted">no image</span>
+                      </div>
+                    )}
                     <span className="flex min-w-0 flex-1 flex-col p-3.5">
                       <span className="truncate text-sm font-semibold text-ink">{sp.scientific_name}</span>
-                      <span className="mt-0.5 truncate text-[13px] text-ink-secondary">{sp.common_name}</span>
+                      <span className="mt-0.5 truncate text-[13px] text-ink-secondary">
+                        {sp.common_name_en ?? sp.common_name_local}
+                      </span>
                       <span className="mt-2 flex flex-wrap gap-1.5">
                         <Badge tone={VENOM[sp.venom_type].tone}>{VENOM[sp.venom_type].label}</Badge>
-                        {here && <Badge tone="info">In this region</Badge>}
+                        {here && <Badge tone="info">Recorded</Badge>}
                       </span>
                     </span>
                   </button>
@@ -199,6 +223,14 @@ export default function Discover({ onOpenSpecies }: DiscoverProps) {
               </li>
             ))}
           </ul>
+        )}
+
+        {!loading && query === '' && page < pages && (
+          <div ref={sentinelRef} className="flex justify-center py-6">
+            <button type="button" onClick={loadMore} className="btn btn-tertiary">
+              {loading ? 'Loading…' : `Load more (${total - (page * PAGE_SIZE)} remaining)`}
+            </button>
+          </div>
         )}
       </div>
     </div>
