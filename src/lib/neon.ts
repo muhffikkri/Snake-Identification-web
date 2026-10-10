@@ -20,7 +20,16 @@ export type Page = {
 
 export const PAGE_SIZE = 24;
 
-let cached: Page | null = null;
+/**
+ * Per-page cache so a reload of /discover in the same session reuses prior
+ * pages instead of re-hitting the DB. ponytail: in-memory only, cleared on
+ * hard reload; add sessionStorage persistence if the quota demands it.
+ */
+const pageCache = new Map<number, Page>();
+
+export function invalidate() {
+  pageCache.clear();
+}
 
 const STORAGE_BASE =
   (import.meta as any).env?.NEON_STORAGE_ENDPOINT?.replace(/\/+$/, '') ||
@@ -35,7 +44,8 @@ export function imageSrc(storagePath: string): string {
  * ponytail: single query + module cache; add search/filter when the UI needs it.
  */
 export async function fetchSpeciesPage(page = 1): Promise<Page> {
-  if (cached && page === 1) return cached;
+  const hit = pageCache.get(page);
+  if (hit) return hit;
 
   const sql = (import.meta as any).env?.DATABASE_URL;
   if (!sql) throw new Error('DATABASE_URL not set in .env');
@@ -94,10 +104,7 @@ export async function fetchSpeciesPage(page = 1): Promise<Page> {
   }));
 
   const out: Page = { items: rows, total, page, pages };
-  if (page === 1) cached = out;
+  pageCache.set(page, out);
   return out;
 }
 
-export function invalidate() {
-  cached = null;
-}
