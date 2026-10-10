@@ -16,7 +16,7 @@ Built by the **Kenapa Mendadak Banget Sih** team for **HSIL Hackathon 2026, Band
 
 **Triage without an account.** Four short questions about the bite produce a grade from 0 to 4, the reasoning behind it, and the handling steps to follow. Tourniquets are banned on the result screen in every case. The full result is on screen before any account prompt appears.
 
-**One account, three ways in.** The landing page navigation offers only Sign in and Register; the app navigation appears once you are signed in. Both account pages carry a secondary control for a government account, which opens the surveillance view. An assessment finished while signed out can be handed to the register page, which writes it to your history the moment the account exists.
+**One account, three ways in** is temporarily disabled. Auth (sign in / register) is off for the current release; the landing page and app navigation carry the tool entry points — Identify, Triage, Discover, and Demo Dashboard — with no account gate. An assessment saved while signed out is written to the device anonymously and picked up by the sync queue when the next owner is attached.
 
 **Geographic discovery.** Species recorded for your region, with a species page that discloses identification, distribution, habitat, and venom detail in sections rather than as a wall of text.
 
@@ -31,7 +31,7 @@ Requires Node.js 18 or newer.
 ```bash
 npm install
 npm run dev          # http://localhost:5174
-npm test             # 57 tests across 6 files
+npm test             # 52 tests across 7 files
 npm run build        # production build into dist/
 npm run preview      # serve the built app
 ```
@@ -44,7 +44,8 @@ npm run preview      # serve the built app
 | View | React 18 + TypeScript + Tailwind CSS 4 | Components and responsive layout |
 | Routing | React Router 6 | Real URLs, so a refresh on `/triage` lands on the assessment |
 | ViewModel | Zustand | GPS, network status, account and role, held assessment, sync queue |
-| Model | Dexie.js over IndexedDB | Species reference set and encrypted incident records |
+| Model (local) | Dexie.js over IndexedDB | Encrypted incident records on the device |
+| Model (remote) | Neon Postgres + Neon Object Storage | Species reference set (245 taxa, 12 496 images) and observation metadata; images served as WebP from the `snake-image` bucket |
 | Services | Web Crypto API | AES-256-GCM encryption at rest, PBKDF2 key derivation |
 | Offline | Service worker | Shell, hashed bundle, and reference images cached on first visit |
 
@@ -62,15 +63,12 @@ draft that crosses the register page is built in `src/lib/assessment.ts`.
 | Route | Reachability |
 |---|---|
 | `/` | Always. Carries its own navigation, no shell header |
-| `/login`, `/register` | Always |
-| `/triage` | Always, from the hero |
-| `/identify`, `/discover`, `/species/:id` | Always, by URL and from the post-assessment options |
-| `/activity`, `/history`, `/account` | Signed in |
-| `/government` | Government account |
+| `/identify`, `/triage` | Always, from the hero or app navbar |
+| `/discover`, `/species/:slug` | Always, from the app navbar |
+| `/activity`, `/history` | Always (no auth gate in v4) |
+| `/government` | Always — Demo Dashboard CTA on landing and app navbar |
 
-The app navigation bar shows only for a signed-in general user. The pages behind
-it stay reachable by URL while signed out, because the assessment result offers
-the snake map and the camera as next steps.
+Auth (`/login`, `/register`, `/account`) is temporarily disabled in v4. To re-enable, restore `Account.tsx`, `AuthPage.tsx`, and add the routes back to `App.tsx`.
 ---
 
 ## Design system

@@ -6,6 +6,91 @@ All notable changes to this project are recorded here. The format follows
 
 ---
 
+## [4.0.0] - 2026-10-11
+
+Auth system temporarily disabled. Routing restructured, S3-based image pipeline,
+and Neon Postgres integration landed.
+
+### Added
+
+- **Neon Postgres + S3 Object Storage integration.** Species and observation
+  metadata loaded from Neon via `src/lib/neon.ts` (browser SQL); 12,640 reference
+  WebP images served from Neon Object Storage (`snake-image` bucket,
+  `public_read`).
+- **`scripts/seed_from_csv.mjs`** — idempotent CSV-to-DB + S3 reseed pipeline
+  (flags: `--no-wipe`, `--no-s3`, `--s3-only`, `--wipe`). Incremental S3 upload
+  skips already-present keys, so partial quota runs can resume.
+- **In-memory page cache in `neon.ts`** (`pageCache` Map). `/discover` no longer
+  re-hits the DB on page reload within the same session; `invalidate()` clears
+  the cache when new data is committed.
+- **3D hero carousel on landing page** — three reference-species WebP images
+  rotate in perspective (rotateY + translateZ), auto-advancing every 3 s.
+- **Organization logos** on landing page: Universitas Diponegoro, Harvard,
+  Health Systems Innovation Lab, AI for Smart-X, PATH.
+- **S3 client helper** (`src/lib/s3-client.ts`) — Node-only, env-driven
+  S3Client with `forcePathStyle`, shared by seed and upload scripts.
+- **Demo Dashboard CTA** on landing page navbar and footer, linking to
+  `/government`.
+
+### Changed
+
+- **Auth disabled (temporarily).** `/login`, `/register`, `/account` routes
+  removed; navbar shows Activity | Identify | Discover | Demo Dashboard only.
+  Triage "Save to this device" writes anonymously to IndexedDB with `null`
+  owner. To re-enable: restore `Account.tsx` and `AuthPage.tsx` and add the
+  routes back.
+- **Landing page navbar** no longer lists landing-section anchors; replaced
+  with tool entry points (Identify, Triage) and the Demo Dashboard CTA.
+- **All non-landing page containers unified** to `max-w-5xl px-4 py-6
+  sm:px-6 sm:py-8` (was `max-w-3xl` / `max-w-4xl` per component).
+- **`/identify` and `/triage` back buttons removed** — the app navbar now
+  provides navigation on every page.
+- **`/government` copy** updated: states this is a demo of all assessment
+  records created to date, for clinical staff responsible for snakebite cases;
+  explains offline-first record storage and sync via the "Data and Reports"
+  tab.
+- **`/discover` region dropdown** — `.field:focus` no longer changes
+  `border-radius` or adds inset box-shadow, so the open state keeps the same
+  rounded corners as the closed state.
+- **`public/dataset/` folder removed** — dummy JPG data no longer used; all
+  image references point at S3 URLs. `db.ts` `imageSrc()` passes absolute S3
+  URLs through unchanged.
+- **`Identify.tsx` `speciesForPath()`** parses both S3 URLs
+  (`/reference/…`) and legacy local paths (`/dataset/…`).
+- **`useNeonSpecies.ts`** switched to cached fetch for all page loads (not just
+  page 1).
+
+### Removed
+
+- `public/dataset/` — 7 dummy JPG files.
+- `/login`, `/register`, `/account` routes and their components' active use.
+- Triage "Create an account to save" register flow (register page no longer
+  exists while auth is disabled).
+- Back buttons on Identify and Triage.
+
+### Fixed
+
+- **S3 key casing mismatch.** `snake_images.storage_path` in DB stored CSV
+  mixed-case folder names (e.g. `Acanthophis_Laevis`) while S3 keys used
+  filesystem casing (`Acanthophis_laevis`). All 12,496 rows updated to match;
+  245/245 species folders verified against S3.
+- **Home.test.tsx** mock now targets `../lib/neon` instead of the removed
+  Dexie layer.
+- **`s3-client.ts`** `process` reference fixed for browser `tsc` build.
+- **Discover.test.tsx** `image_path` values updated from `/dataset/…` to
+  S3-style relative paths.
+
+### Known limits
+
+- Auth is disabled, not deleted — re-enabling requires restoring routes and the
+  account components.
+- In-memory page cache is cleared on hard reload; a cross-session cache
+  (IndexedDB) would require a migration.
+- Neon Object Storage quota is the hard cap for S3 uploads; `seed_from_csv.mjs`
+  `--wipe` is opt-in to avoid accidental data loss.
+
+---
+
 ## [Unreleased]
 
 ### Added
@@ -157,5 +242,6 @@ local schema for species and incidents; AES-256-GCM client-side encryption;
 Zustand state; four integrated pages (home, inference, triage, dashboard with a
 Leaflet map and a simulated delayed sync).
 
+[4.0.0]: https://github.com/muhffikkri/Snake-Identification-web/releases/tag/v4.0.0
 [3.0.0]: https://github.com/muhffikkri/SnakeBiteAI/releases/tag/v3.0.0
 [2.0.0]: https://github.com/muhffikkri/SnakeBiteAI/releases/tag/v2.0.0
