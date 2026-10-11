@@ -1,4 +1,4 @@
-import { ArrowRight, Ban, HelpCircle, ClipboardList, Map, Radio } from 'lucide-react';
+import { ArrowRight, Ban, HelpCircle, ClipboardList, Map, Menu, Radio, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Card } from './ui/Primitives';
 
@@ -214,6 +214,7 @@ function HeroCarousel() {
 }
 
 export default function Landing({ onIdentify, onTriage, onGovernment, onDiscover }: LandingProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div className="overflow-x-hidden bg-canvas">
       <nav
@@ -226,11 +227,8 @@ export default function Landing({ onIdentify, onTriage, onGovernment, onDiscover
             <span className="text-[15px] font-semibold tracking-tight">SnakeBiteAI</span>
           </a>
 
-          {/* The old section-anchor nav (The problem / How it works / Development
-              plan / Team) is replaced by the four tool entry points; sign in and
-              register are disabled for now, so Demo Dashboard takes the primary
-              button slot. */}
-          <div className="hidden items-center gap-5 lg:flex">
+          {/* Desktop (md+): inline links. Tablet-portrait and mobile: burger. */}
+          <div className="hidden items-center gap-5 md:flex">
             <button
               type="button"
               onClick={onIdentify}
@@ -257,17 +255,67 @@ export default function Landing({ onIdentify, onTriage, onGovernment, onDiscover
           <div className="flex flex-none items-center gap-2">
             <button
               type="button"
-              onClick={onIdentify}
-              className="btn btn-secondary px-3.5 text-[13px] lg:hidden"
+              onClick={onGovernment}
+              className="btn btn-primary px-3.5 text-[13px]"
             >
-              Identify
-            </button>
-            <button type="button" onClick={onGovernment} className="btn btn-primary px-3.5 text-[13px]">
               Demo Dashboard
               <Radio className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
+
+            {/* Burger: mobile and tablet-portrait only. At md+ the inline nav
+                takes over and this button is hidden. */}
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-expanded={menuOpen}
+              aria-controls="landing-navigation"
+              aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              className="btn btn-secondary min-w-[44px] justify-center px-3 md:hidden"
+            >
+              {menuOpen ? <X className="h-4 w-4" aria-hidden="true" /> : <Menu className="h-4 w-4" aria-hidden="true" />}
+              <span className="hidden sm:inline">{menuOpen ? 'Close' : 'Menu'}</span>
+            </button>
           </div>
         </div>
+
+        {/* Burger dropdown panel: mobile and tablet-portrait only. */}
+        {menuOpen && (
+          <nav
+            id="landing-navigation"
+            aria-label="Landing sections"
+            className="border-t border-line md:hidden"
+          >
+            <ul className="mx-auto flex max-w-6xl flex-col px-4 pb-3 sm:px-6">
+              <li>
+                <button
+                  type="button"
+                  onClick={() => { onIdentify(); setMenuOpen(false); }}
+                  className="flex min-h-[44px] w-full items-center rounded-md px-3 text-sm font-medium text-ink-secondary hover:bg-surface-secondary hover:text-ink"
+                >
+                  Identify a Snake
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => { onDiscover(); setMenuOpen(false); }}
+                  className="flex min-h-[44px] w-full items-center rounded-md px-3 text-sm font-medium text-ink-secondary hover:bg-surface-secondary hover:text-ink"
+                >
+                  Explore Snake Map
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => { onTriage(); setMenuOpen(false); }}
+                  className="flex min-h-[44px] w-full items-center rounded-md px-3 text-sm font-medium text-ink-secondary hover:bg-surface-secondary hover:text-ink"
+                >
+                  Start Triage Assessment
+                </button>
+              </li>
+            </ul>
+          </nav>
+        )}
       </nav>
 
       <header id="top" className="mx-auto max-w-6xl px-4 pb-14 pt-10 sm:px-6 sm:pb-20 sm:pt-14">

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter, Link, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Building2, Camera, LayoutDashboard, Map, Menu, X } from 'lucide-react';
+import { Building2, Camera, LayoutDashboard, Map } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 import LandingPage from './components/LandingPage';
 import Home from './components/Home';
@@ -44,7 +44,6 @@ function ScrollToTop() {
 function Shell({ children }: { children: React.ReactNode }) {
   const { networkStatus } = useAppStore();
   const { pathname } = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
 
   // The landing page carries its own navigation, so the shell chrome is
   // skipped there rather than stacking a second bar on top of it.
@@ -76,31 +75,14 @@ function Shell({ children }: { children: React.ReactNode }) {
             <span className="text-sm font-semibold tracking-tight">SnakeBiteAI</span>
           </Link>
 
-          <div className="flex items-center gap-2.5">
-            <span role="status" className={`badge ${networkStatus === 'online' ? 'badge-success' : 'badge-warning'}`}>
-              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
-              {networkStatus === 'online' ? 'Online' : 'Offline, ready'}
-            </span>
-
-            {/* Burger: mobile and tablet-portrait only. At md+ the inline nav
-                takes over and this button is hidden. */}
-            <button
-              type="button"
-              onClick={() => setMenuOpen((open) => !open)}
-              aria-expanded={menuOpen}
-              aria-controls="app-navigation"
-              aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-              className="btn btn-secondary min-w-[44px] justify-center px-3 md:hidden"
-            >
-              {menuOpen ? <X className="h-4 w-4" aria-hidden="true" /> : <Menu className="h-4 w-4" aria-hidden="true" />}
-              <span className="hidden sm:inline">{menuOpen ? 'Close' : 'Menu'}</span>
-              <span className="sr-only sm:hidden">{menuOpen ? 'Close navigation menu' : 'Open navigation menu'}</span>
-            </button>
-          </div>
+          <span role="status" className={`badge ${networkStatus === 'online' ? 'badge-success' : 'badge-warning'}`}>
+            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+            {networkStatus === 'online' ? 'Online' : 'Offline, ready'}
+          </span>
         </div>
 
-        {/* Inline nav: visible on tablet (md) and desktop, the standard top bar. */}
-        <nav aria-label="Main" className="hidden border-t border-line md:block">
+        {/* Top nav links: visible on tablet and desktop only. Mobile uses the bottom bar. */}
+        <nav aria-label="Main" className="hidden border-t border-line sm:block">
           <ul className="mx-auto flex max-w-5xl items-center gap-x-1 px-4">
             {APP_NAV.map((item) => (
               <li key={item.to}>
@@ -109,33 +91,6 @@ function Shell({ children }: { children: React.ReactNode }) {
                   end={item.end}
                   className={({ isActive }) =>
                     `flex min-h-[44px] items-center gap-2 rounded-md px-3.5 text-sm font-semibold transition-colors ${
-                      isActive ? 'bg-brand-50 text-brand' : 'text-ink-secondary hover:bg-surface-secondary hover:text-ink'
-                    }`
-                  }
-                >
-                  <item.icon className="h-4 w-4 flex-none" aria-hidden="true" />
-                  <span>{item.label}</span>
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        {/* Burger dropdown panel: mobile and tablet-portrait only. */}
-        <nav
-          id="app-navigation"
-          aria-label="Main"
-          className={`border-t border-line md:hidden ${menuOpen ? 'block' : 'hidden'}`}
-        >
-          <ul className="mx-auto flex max-w-5xl flex-col px-2 pb-3">
-            {APP_NAV.map((item) => (
-              <li key={item.to}>
-                <NavLink
-                  to={item.to}
-                  end={item.end}
-                  onClick={() => setMenuOpen(false)}
-                  className={({ isActive }) =>
-                    `flex min-h-[44px] items-center gap-2.5 rounded-md px-3 text-[13px] font-semibold transition-colors ${
                       isActive ? 'bg-brand-50 text-brand' : 'text-ink-secondary hover:bg-surface-secondary hover:text-ink'
                     }`
                   }
