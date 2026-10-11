@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Link, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Building2, Camera, LayoutDashboard, Map, Menu, X } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 import LandingPage from './components/LandingPage';
 import Home from './components/Home';
 import Identify from './components/Identify';
@@ -275,6 +276,7 @@ function NetworkWatcher() {
 export default function App() {
   return (
     <BrowserRouter>
+      <Analytics />
       <NetworkWatcher />
       <ScrollToTop />
       <Shell>
