@@ -10,14 +10,6 @@ Built by the **Kenapa Mendadak Banget Sih** team for **HSIL Hackathon 2026, Band
 
 ---
 
-## Screenshots
-
-| Landing page |
-|---|
-| ![Landing page](screenshots/landing_page.png) |
-
----
-
 ## What it does
 
 **Identification without a network.** Photograph a snake or pick one from the on-device reference set. The pipeline runs locally and returns a ranked list with a confidence figure, never a certainty. The page states plainly that this is a suggestion, not a diagnosis, and lists the visual features the model matched so a user can disagree with it.
@@ -47,15 +39,16 @@ npm run preview      # serve the built app
 ---
 
 ## Architecture
-| Layer | Choice | Role |
-|---|---|---|
-| View | React 18 + TypeScript + Tailwind CSS 4 | Components and responsive layout |
-| Routing | React Router 6 | Real URLs, so a refresh on `/triage` lands on the assessment |
-| ViewModel | Zustand | GPS, network status, account and role, held assessment, sync queue |
-| Model (local) | Dexie.js over IndexedDB | Encrypted incident records on the device |
-| Model (remote) | Neon Postgres + Neon Object Storage | Species reference set (245 taxa, 12 496 images) and observation metadata; images served as WebP from the `snake-image` bucket |
-| Services | Web Crypto API | AES-256-GCM encryption at rest, PBKDF2 key derivation |
-| Offline | Service worker | Shell, hashed bundle, and reference images cached on first visit |
+
+| Layer          | Choice                                 | Role                                                                                                                          |
+| -------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| View           | React 18 + TypeScript + Tailwind CSS 4 | Components and responsive layout                                                                                              |
+| Routing        | React Router 6                         | Real URLs, so a refresh on `/triage` lands on the assessment                                                                  |
+| ViewModel      | Zustand                                | GPS, network status, account and role, held assessment, sync queue                                                            |
+| Model (local)  | Dexie.js over IndexedDB                | Encrypted incident records on the device                                                                                      |
+| Model (remote) | Neon Postgres + Neon Object Storage    | Species reference set (245 taxa, 12 496 images) and observation metadata; images served as WebP from the `snake-image` bucket |
+| Services       | Web Crypto API                         | AES-256-GCM encryption at rest, PBKDF2 key derivation                                                                         |
+| Offline        | Service worker                         | Shell, hashed bundle, and reference images cached on first visit                                                              |
 
 Routing brings one deployment requirement: unknown paths must serve the shell.
 `vite.config.ts` sets `appType: "spa"` so `vite preview` does the fallback, and
@@ -68,27 +61,26 @@ draft that crosses the register page is built in `src/lib/assessment.ts`.
 
 ### Navigation model
 
-| Route | Reachability |
-|---|---|
-| `/` | Always. Carries its own navigation, no shell header |
-| `/identify`, `/triage` | Always, from the hero or app navbar |
-| `/discover`, `/species/:slug` | Always, from the app navbar |
-| `/activity`, `/history` | Always (no auth gate in v4) |
-| `/government` | Always — Demo Dashboard CTA on landing and app navbar |
+| Route                         | Reachability                                          |
+| ----------------------------- | ----------------------------------------------------- |
+| `/`                           | Always. Carries its own navigation, no shell header   |
+| `/identify`, `/triage`        | Always, from the hero or app navbar                   |
+| `/discover`, `/species/:slug` | Always, from the app navbar                           |
+| `/activity`, `/history`       | Always (no auth gate in v4)                           |
+| `/government`                 | Always — Demo Dashboard CTA on landing and app navbar |
 
-Auth (`/login`, `/register`, `/account`) is temporarily disabled in v4. To re-enable, restore `Account.tsx`, `AuthPage.tsx`, and add the routes back to `App.tsx`.
----
+## Auth (`/login`, `/register`, `/account`) is temporarily disabled in v4. To re-enable, restore `Account.tsx`, `AuthPage.tsx`, and add the routes back to `App.tsx`.
 
 ## Design system
 
 Tokens are defined once in `src/index.css` and mirrored into `tailwind.config.js`. The source of truth is `DESIGN.md`.
 
-| Role | Value |
-|---|---|
-| Brand accent | `#70020F` |
-| Canvas | `#F7F8FA` |
-| Surface | `#FFFFFF` |
-| Text primary / secondary / muted | `#101828` / `#475467` / `#667085` |
+| Role                              | Value                                         |
+| --------------------------------- | --------------------------------------------- |
+| Brand accent                      | `#70020F`                                     |
+| Canvas                            | `#F7F8FA`                                     |
+| Surface                           | `#FFFFFF`                                     |
+| Text primary / secondary / muted  | `#101828` / `#475467` / `#667085`             |
 | Success / warning / danger / info | `#15803D` / `#B7791F` / `#C53030` / `#2563EB` |
 
 Three tokens deviate from the literal hexes in `DESIGN.md`, because the values given there fail the WCAG AA standard the same document requires. Each deviation is commented in the token file:
@@ -115,11 +107,11 @@ deployment so a reviewer can open the change without a local build.
    the **Deployments** write scope for the project.
 3. Add three repository secrets under Settings, Secrets and variables, Actions:
 
-   | Secret | Where to get it |
-   |---|---|
-   | `VERCEL_TOKEN` | The token from step 2 |
-   | `VERCEL_ORG_ID` | `vercel link` writes it into `.vercel/project.json`, or the project Settings, General |
-   | `VERCEL_PROJECT_ID` | Same place as the org id |
+   | Secret              | Where to get it                                                                       |
+   | ------------------- | ------------------------------------------------------------------------------------- |
+   | `VERCEL_TOKEN`      | The token from step 2                                                                 |
+   | `VERCEL_ORG_ID`     | `vercel link` writes it into `.vercel/project.json`, or the project Settings, General |
+   | `VERCEL_PROJECT_ID` | Same place as the org id                                                              |
 
 4. Push to `main`. `.github/workflows/deploy.yml` runs the verify job first
    (type check, tests, build, routing check) and only deploys if it passes.
