@@ -253,10 +253,12 @@ export default function Landing({ onIdentify, onTriage, onGovernment, onDiscover
           </div>
 
           <div className="flex flex-none items-center gap-2">
+            {/* Demo Dashboard CTA: desktop only. Mobile and tablet-portrait
+                reach it through the burger dropdown. */}
             <button
               type="button"
               onClick={onGovernment}
-              className="btn btn-primary px-3.5 text-[13px]"
+              className="btn btn-primary hidden px-3.5 text-[13px] md:inline-flex"
             >
               Demo Dashboard
               <Radio className="h-3.5 w-3.5" aria-hidden="true" />
@@ -311,6 +313,16 @@ export default function Landing({ onIdentify, onTriage, onGovernment, onDiscover
                   className="flex min-h-[44px] w-full items-center rounded-md px-3 text-sm font-medium text-ink-secondary hover:bg-surface-secondary hover:text-ink"
                 >
                   Start Triage Assessment
+                </button>
+              </li>
+              <li className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => { onGovernment(); setMenuOpen(false); }}
+                  className="btn btn-primary w-full justify-center text-sm"
+                >
+                  Demo Dashboard
+                  <Radio className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
               </li>
             </ul>

@@ -69,39 +69,41 @@ function Shell({ children }: { children: React.ReactNode }) {
       </a>
 
       <header className="sticky top-0 z-50 border-b border-line bg-surface">
+        {/* One bar: logo left, nav links + badge right (sm+). On mobile only the
+            logo and badge remain in the bar; navigation moves to the bottom tab bar. */}
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-2.5">
           <Link to="/" className="flex min-h-[44px] items-center gap-2.5" aria-label="SnakeBiteAI home">
             <img src="/Logo_1.webp" alt="" aria-hidden="true" className="h-6 w-6 object-contain" />
             <span className="text-sm font-semibold tracking-tight">SnakeBiteAI</span>
           </Link>
 
-          <span role="status" className={`badge ${networkStatus === 'online' ? 'badge-success' : 'badge-warning'}`}>
-            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
-            {networkStatus === 'online' ? 'Online' : 'Offline, ready'}
-          </span>
+          <nav aria-label="Main" className="flex items-center gap-x-1">
+            <ul className="hidden items-center gap-x-1 sm:flex">
+              {APP_NAV.map((item) => (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    end={item.end}
+                    className={({ isActive }) =>
+                      `flex min-h-[44px] items-center gap-2 rounded-md px-3 text-sm font-semibold transition-colors ${
+                        isActive ? 'bg-brand-50 text-brand' : 'text-ink-secondary hover:bg-surface-secondary hover:text-ink'
+                      }`
+                    }
+                  >
+                    <item.icon className="h-4 w-4 flex-none" aria-hidden="true" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+            <li role="presentation" className="ml-2">
+              <span role="status" className={`badge ${networkStatus === 'online' ? 'badge-success' : 'badge-warning'}`}>
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+                {networkStatus === 'online' ? 'Online' : 'Offline, ready'}
+              </span>
+            </li>
+          </nav>
         </div>
-
-        {/* Top nav links: visible on tablet and desktop only. Mobile uses the bottom bar. */}
-        <nav aria-label="Main" className="hidden border-t border-line sm:block">
-          <ul className="mx-auto flex max-w-5xl items-center gap-x-1 px-4">
-            {APP_NAV.map((item) => (
-              <li key={item.to}>
-                <NavLink
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) =>
-                    `flex min-h-[44px] items-center gap-2 rounded-md px-3.5 text-sm font-semibold transition-colors ${
-                      isActive ? 'bg-brand-50 text-brand' : 'text-ink-secondary hover:bg-surface-secondary hover:text-ink'
-                    }`
-                  }
-                >
-                  <item.icon className="h-4 w-4 flex-none" aria-hidden="true" />
-                  <span>{item.label}</span>
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
       </header>
 
       <main id="main" className="flex-1">
