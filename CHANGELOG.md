@@ -91,66 +91,53 @@ and Neon Postgres integration landed.
 
 ---
 
-## [Unreleased]
+## [4.1.0] - 2026-10-11
 
 ### Added
 
-- **Vercel deployment.** `vercel.json` pins the build command, the output
-  directory and `npm ci`, and routes every client route to the shell. Pushes to
-  `main` deploy to production, pull requests get a preview.
-- **GitHub Actions workflow** that verifies before it deploys: type check, tests,
-  build, and a routing check. A deploy job depends on it, so a failing test
-  never reaches production.
-- **`tools/serve-dist.mjs`**, which serves `dist/` with the same
-  filesystem-then-shell order Vercel uses, so the deployed routing shape can be
-  exercised locally without a Vercel account.
-- **`tools/vercel-rewrite-check.mjs`**, which asserts that every file in `dist/`
-  is served as itself, every app route falls through to the shell, and the
-  service worker headers allow updates to land.
-- **Client-side routing** on React Router 6. `/login`, `/register`,
-  `/triage`, `/identify`, `/discover`, `/species/:id`, `/activity`, `/history`,
-  `/account` and `/government` are all addressable, so a refresh or a shared
-  link lands on the right screen.
-- **Account pages** with a government-account control. Signing in as an agency
-  account opens the surveillance view; the account page can switch between the
-  two roles without signing out.
-- **Held assessment across registration.** Finishing triage while signed out and
-  choosing "Create an account to save" routes to the register page with the
-  draft in the store, which writes it to the new account's history on submit.
-- **Where-to-next panel.** Declining to save an assessment now offers the landing
-  page, the snake map, and the camera.
-- **Unknown-route page** with a real destination, replacing the browser's own
-  error.
+- **Vercel Analytics** — `@vercel/analytics/react` component mounted inside the
+  router; pageviews are tracked automatically on every route change. No
+  per-component instrumentation needed.
+- **Landing page navbar burger menu** — mobile and tablet-portrait viewports
+  (< md) show a burger button that opens a dropdown with Identify a Snake,
+  Explore Snake Map, Start Triage Assessment, and Demo Dashboard. At md+ the
+  same four links render inline; no burger.
+- **App shell single-bar layout** — all non-landing pages now use one header
+  bar: logo pinned left, nav links centred (`absolute left-1/2`), online badge
+  pinned right. The separate second nav row was removed.
 
 ### Changed
 
-- **The landing page carries its own navigation** with the section links and
-  Sign in plus Register. The shell header, the account control and the menu
-  button no longer appear there, so the landing page has one bar rather than two.
-- **The app navigation is for a signed-in general user.** Home, Identify, Snake
-  Map, Triage, Activity and History appear once signed in and are hidden again
-  on sign-out.
-- **Back from triage returns to activity when signed in and to the landing page
-  when signed out**, matching where the assessment was started from.
-- **Account is a single object** carrying a name and a role, replacing the
-  separate account name and audience flags.
+- **Non-landing page navigation per breakpoint.** Mobile (< sm): header
+  carries only the logo and the online badge; navigation is the fixed bottom
+  tab bar (Activity, Identify, Discover, Dashboard — short labels so
+  "Dashboard" never wraps to two lines). Tablet and desktop (sm+): bottom
+  bar hidden, nav links visible in the top bar. No burger button on any
+  non-landing page.
+- **Landing page mobile navbar** — the Demo Dashboard CTA button is no longer
+  visible in the mobile bar; it moved into the burger dropdown so the mobile
+  bar is a clean logo + burger pair.
+- **"Discover" copywriting** — renamed to "Explore Snake Map" in both the
+  landing navbar and the footer for a more descriptive label.
+- **Collaborator logos enlarged** — 56 px to 80 px (h-20 w-20) on the
+  landing page, with name and note stacked vertically below each logo.
+- **Hero carousel** — replaced the 3D rotateY fan with a slide-in-from-right
+  / slide-out-to-left transition; duration changed from 3 s to 5 s; card
+  now fills the full md column span (no uneven left/right margins) with
+  16 px species-name and note text.
+- **Horizontal overflow on landing page** — root div now carries
+  `overflow-x-hidden` so the carousel's off-screen card state cannot produce
+  a horizontal scrollbar.
 
-### Fixed
+### Removed
 
-- **`npm install` failed to resolve, so the build broke on any fresh clone.**
-  `@vitejs/plugin-react@4.7.0` declares a peer range ending at vite 7 while the
-  project runs vite 8. Upgraded to `@vitejs/plugin-react@5.2.0`, which supports
-  vite 8 with the same API, instead of forcing the conflict away with
-  `--legacy-peer-deps`. Output is byte-identical.
-- **Deep links 404'd after routing was introduced.** `vite.config.ts` now sets
-  `appType: "spa"`, and `vercel.json` carries the equivalent rewrite for
-  production; the service worker already returned the cached shell for
-  navigations, so offline deep links work.
-- **Switching to a government account left the user stranded** on the account
-  page with no navigation, because the role change removed the app nav without
-  moving them. It now routes to the view that applies.
-- **A failing sync-count read could strand a registration.** The count refresh
-  no longer throws, so a store error cannot abort the caller's own work.
+- **Burger button from app shell** — the previous commit's mobile/tablet
+  burger on non-landing pages was removed; mobile uses the bottom tab bar
+  and tablet/desktop use the centred top nav links.
+- **`useState` and `Menu`/`X` imports** from `App.tsx` after the burger was
+  removed from the shell.
+
+---
 
 ## [3.0.0] - 2026-10-07
 
@@ -242,6 +229,7 @@ local schema for species and incidents; AES-256-GCM client-side encryption;
 Zustand state; four integrated pages (home, inference, triage, dashboard with a
 Leaflet map and a simulated delayed sync).
 
+[4.1.0]: https://github.com/muhffikkri/Snake-Identification-web/releases/tag/v4.1.0
 [4.0.0]: https://github.com/muhffikkri/Snake-Identification-web/releases/tag/v4.0.0
 [3.0.0]: https://github.com/muhffikkri/SnakeBiteAI/releases/tag/v3.0.0
 [2.0.0]: https://github.com/muhffikkri/SnakeBiteAI/releases/tag/v2.0.0

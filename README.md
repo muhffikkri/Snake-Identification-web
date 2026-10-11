@@ -6,7 +6,15 @@ An offline-first progressive web app for snakebite response: AI-assisted identif
 
 Built by the **Kenapa Mendadak Banget Sih** team for **HSIL Hackathon 2026, Bandung Hub**, with support and reference from Harvard T.H. Chan School of Public Health (Health Systems Innovation Lab), AI for Smart-X, PATH Global Health, and Universitas Diponegoro.
 
-![SnakeBiteAI landing page](screenshots/image.png)
+![SnakeBiteAI landing page](screenshots/landing_page.png)
+
+---
+
+## Screenshots
+
+| Landing page |
+|---|
+| ![Landing page](screenshots/landing_page.png) |
 
 ---
 
