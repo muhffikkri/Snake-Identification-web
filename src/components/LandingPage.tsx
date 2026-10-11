@@ -243,7 +243,7 @@ export default function Landing({ onIdentify, onTriage, onGovernment, onDiscover
               onClick={onDiscover}
               className="flex min-h-[44px] items-center text-sm font-medium text-ink-secondary hover:text-ink"
             >
-              Discover
+              Explore Snake Map
             </button>
             <button
               type="button"
@@ -438,7 +438,7 @@ export default function Landing({ onIdentify, onTriage, onGovernment, onDiscover
                   src={org.logo}
                   alt=""
                   aria-hidden="true"
-                  className="h-14 w-14 flex-none rounded-md object-contain"
+                  className="h-20 w-20 flex-none rounded-md object-contain"
                 />
                 <p className="mt-3 text-sm font-semibold leading-snug text-ink">{org.name}</p>
                 <p className="mt-1 text-[13px] text-ink-muted">{org.note}</p>
@@ -475,7 +475,7 @@ export default function Landing({ onIdentify, onTriage, onGovernment, onDiscover
               onClick={onDiscover}
               className="flex min-h-[44px] items-center text-left text-[13px] font-medium text-white hover:underline"
             >
-              Discover
+              Explore Snake Map
             </button>
             <button
               type="button"

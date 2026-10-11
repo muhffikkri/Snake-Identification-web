@@ -28,6 +28,6 @@ describe('Landing navigation', () => {
     );
     expect(screen.getAllByRole('button', { name: /identify a snake/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: /start triage assessment/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('button', { name: /discover/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /explore snake map/i }).length).toBeGreaterThan(0);
   });
 });
