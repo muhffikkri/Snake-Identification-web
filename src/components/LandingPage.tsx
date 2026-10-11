@@ -215,7 +215,7 @@ function HeroCarousel() {
 
 export default function Landing({ onIdentify, onTriage, onGovernment, onDiscover }: LandingProps) {
   return (
-    <div className="bg-canvas">
+    <div className="overflow-x-hidden bg-canvas">
       <nav
         aria-label="Sections"
         className="sticky top-0 z-50 border-b border-line bg-surface/95 backdrop-blur-sm"
